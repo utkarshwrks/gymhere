@@ -1,6 +1,10 @@
 import { db } from "@/lib/db";
 import { outbox } from "@/lib/db/schema";
-import { env, isConfigured } from "@/lib/env";
+import { resolveEmailContext } from "@/lib/credentials/resolver";
+
+function realKey(v: string): boolean {
+  return !!v && !/_xxx$|^xxx$/i.test(v) && !v.includes("xxxx");
+}
 
 export interface OutgoingMessage {
   gymId: string;
@@ -38,28 +42,31 @@ async function logOutbox(
 }
 
 export async function sendEmail(msg: OutgoingMessage): Promise<{ ok: boolean; error?: string }> {
-  if (!isConfigured.resend) {
+  const email = await resolveEmailContext(msg.gymId);
+  if (!realKey(email.apiKey)) {
+    // No real key (demo, or tenant-mode without verified creds) → log only.
     await logOutbox(msg, "email", "sent", "demo");
     return { ok: true };
   }
+  const provider = email.source === "tenant" ? "resend (gym)" : "resend";
   try {
     const { Resend } = await import("resend");
-    const resend = new Resend(env.RESEND_API_KEY);
+    const resend = new Resend(email.apiKey);
     const { error } = await resend.emails.send({
-      from: env.RESEND_FROM_EMAIL,
+      from: email.fromEmail,
       to: msg.to,
       subject: msg.subject ?? "Message from your gym",
       text: msg.body,
     });
     if (error) {
-      await logOutbox(msg, "email", "failed", "resend", error.message);
+      await logOutbox(msg, "email", "failed", provider, error.message);
       return { ok: false, error: error.message };
     }
-    await logOutbox(msg, "email", "sent", "resend");
+    await logOutbox(msg, "email", "sent", provider);
     return { ok: true };
   } catch (e) {
     const message = e instanceof Error ? e.message : "send failed";
-    await logOutbox(msg, "email", "failed", "resend", message);
+    await logOutbox(msg, "email", "failed", provider, message);
     return { ok: false, error: message };
   }
 }

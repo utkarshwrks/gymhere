@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { addDays, format, subDays } from "date-fns";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "./index";
 import {
   attendance,
@@ -9,6 +9,7 @@ import {
   gymSettings,
   gymSubscriptions,
   gyms,
+  integrationPolicies,
   memberSubscriptions,
   members,
   membershipPlans,
@@ -30,10 +31,10 @@ async function main() {
   console.log("Seeding GymHere…");
 
   // --- Platform plans ---
-  const planRows = [
+  const planRows: { key: string; name: string; pricePaise: number; memberCap: number | null; sortOrder: number; description: string; features: Record<string, boolean> }[] = [
     { key: "starter", name: "Starter", pricePaise: 99_900, memberCap: 100, sortOrder: 1, description: "For a single studio finding its feet.", features: { classes: true, microsite: true, reports_advanced: false, api_access: false, whatsapp: false, pos: false, payroll: false } },
-    { key: "growth", name: "Growth", pricePaise: 249_900, memberCap: 500, sortOrder: 2, description: "For a busy gym scaling members and staff.", features: { classes: true, microsite: true, reports_advanced: true, api_access: false, whatsapp: true, pos: true, payroll: true } },
-    { key: "pro", name: "Pro", pricePaise: 499_900, memberCap: null, sortOrder: 3, description: "Unlimited members, API access and every module.", features: { classes: true, microsite: true, reports_advanced: true, api_access: true, whatsapp: true, pos: true, payroll: true } },
+    { key: "growth", name: "Growth", pricePaise: 249_900, memberCap: 500, sortOrder: 2, description: "For a busy gym scaling members and staff.", features: { classes: true, microsite: true, reports_advanced: true, api_access: false, whatsapp: true, pos: true, payroll: true, byo_credentials: true } },
+    { key: "pro", name: "Pro", pricePaise: 499_900, memberCap: null, sortOrder: 3, description: "Unlimited members, API access and every module.", features: { classes: true, microsite: true, reports_advanced: true, api_access: true, whatsapp: true, pos: true, payroll: true, byo_credentials: true } },
   ];
   for (const p of planRows) {
     const existing = await db.query.platformPlans.findFirst({ where: eq(platformPlans.key, p.key) });
@@ -41,6 +42,13 @@ async function main() {
     else await db.insert(platformPlans).values(p);
   }
   console.log("  ✓ 3 platform plans");
+
+  // --- Default integration policies (platform-managed for every service) ---
+  for (const service of ["payments", "sms", "whatsapp", "email", "storage"] as const) {
+    const has = await db.query.integrationPolicies.findFirst({ where: and(isNull(integrationPolicies.gymId), eq(integrationPolicies.service, service)) });
+    if (!has) await db.insert(integrationPolicies).values({ gymId: null, service, mode: "platform", allowPlatformFallback: true });
+  }
+  console.log("  ✓ integration policies (platform)");
 
   // --- Super admin ---
   // Set DEMO_ADMIN_EMAIL / DEMO_OWNER_EMAIL to YOUR email so that signing up

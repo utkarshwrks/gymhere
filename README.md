@@ -17,6 +17,7 @@ Next.js 15 (App Router, TS strict) · Tailwind CSS v4 · shadcn-style UI · Driz
 | 3 | Money & ops: billing, Razorpay, POS, payroll, classes, comms, reports | ✅ Done |
 | 4 | Super admin, member portal, public microsites | ✅ Done |
 | 5 | Public API, security hardening, demo seed, deploy | ✅ Done |
+| 6 | Credential control: platform-managed vs tenant-managed integrations | ✅ Done |
 
 ## Getting started
 

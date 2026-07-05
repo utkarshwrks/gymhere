@@ -123,3 +123,22 @@ export const reviewStatusEnum = pgEnum("review_status", [
   "approved",
   "hidden",
 ]);
+
+export const integrationServiceEnum = pgEnum("integration_service", [
+  "payments",
+  "sms",
+  "whatsapp",
+  "email",
+  "storage",
+]);
+
+export const integrationModeEnum = pgEnum("integration_mode", [
+  "platform",
+  "tenant",
+]);
+
+export const credentialStatusEnum = pgEnum("credential_status", [
+  "unverified",
+  "verified",
+  "failed",
+]);

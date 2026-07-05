@@ -11,7 +11,8 @@ export type FeatureKey =
   | "microsite"
   | "reports_advanced"
   | "pos"
-  | "payroll";
+  | "payroll"
+  | "byo_credentials";
 
 export const ALL_FEATURES: { key: FeatureKey; label: string }[] = [
   { key: "classes", label: "Classes & timetable" },
@@ -21,6 +22,7 @@ export const ALL_FEATURES: { key: FeatureKey; label: string }[] = [
   { key: "reports_advanced", label: "Advanced reports" },
   { key: "pos", label: "Supplement store (POS)" },
   { key: "payroll", label: "Staff payroll" },
+  { key: "byo_credentials", label: "Bring-your-own API keys" },
 ];
 
 export interface PlanLike {

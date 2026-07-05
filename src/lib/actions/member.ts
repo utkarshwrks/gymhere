@@ -8,7 +8,7 @@ import { requireMember } from "@/lib/auth";
 import { classBookings, classSchedules, classes, invoices, memberReviews, members, payments } from "@/lib/db/schema";
 import { createOrder, verifyPaymentSignature } from "@/lib/razorpay";
 import { captureRazorpayPayment } from "@/lib/billing-core";
-import { isConfigured } from "@/lib/env";
+import { paymentsReady, resolvePaymentContext } from "@/lib/credentials/resolver";
 import type { CheckoutInfo } from "@/lib/actions/billing";
 
 type Result<T = unknown> = { ok: true; data?: T } | { ok: false; error: string };
@@ -77,13 +77,17 @@ export async function submitReview(input: z.input<typeof reviewSchema>): Promise
 
 /** Member pays their own outstanding invoice via Razorpay. */
 export async function startMyInvoiceCheckout(invoiceId: string): Promise<Result<CheckoutInfo>> {
-  if (!isConfigured.razorpay) return { ok: false, error: "Online payment isn't configured." };
   const ctx = await requireMember();
+  if (!(await paymentsReady(ctx.gym.id))) return { ok: false, error: "Online payment isn't set up for this gym." };
   const invoice = await db.query.invoices.findFirst({ where: and(eq(invoices.gymId, ctx.gym.id), eq(invoices.id, invoiceId), eq(invoices.memberId, ctx.member.id)) });
   if (!invoice) return { ok: false, error: "Invoice not found" };
   if (invoice.duePaise <= 0) return { ok: false, error: "Already paid" };
 
-  const order = await createOrder({ amountPaise: invoice.duePaise, receipt: invoice.number, notes: { invoiceId: invoice.id, gymId: ctx.gym.id, type: "invoice" } });
+  const pay = await resolvePaymentContext(ctx.gym.id);
+  const order = await createOrder(
+    { amountPaise: invoice.duePaise, receipt: invoice.number, notes: { invoiceId: invoice.id, gymId: ctx.gym.id, type: "invoice" } },
+    { keyId: pay.keyId, keySecret: pay.keySecret },
+  );
   await db.insert(payments).values({ gymId: ctx.gym.id, invoiceId: invoice.id, memberId: ctx.member.id, amountPaise: invoice.duePaise, method: "razorpay", status: "pending", razorpayOrderId: order.orderId });
 
   return { ok: true, data: { orderId: order.orderId, keyId: order.keyId, amountPaise: order.amountPaise, name: ctx.gym.name, description: `Invoice ${invoice.number}` } };
@@ -91,7 +95,8 @@ export async function startMyInvoiceCheckout(invoiceId: string): Promise<Result<
 
 export async function verifyMyPayment(input: { orderId: string; paymentId: string; signature: string }): Promise<Result> {
   const ctx = await requireMember();
-  if (!verifyPaymentSignature(input.orderId, input.paymentId, input.signature)) return { ok: false, error: "Signature verification failed" };
+  const pay = await resolvePaymentContext(ctx.gym.id);
+  if (!verifyPaymentSignature(input.orderId, input.paymentId, input.signature, pay.keySecret)) return { ok: false, error: "Signature verification failed" };
   const pending = await db.query.payments.findFirst({ where: and(eq(payments.gymId, ctx.gym.id), eq(payments.razorpayOrderId, input.orderId), eq(payments.memberId, ctx.member.id)) });
   if (!pending) return { ok: false, error: "Order not found" };
   const res = await captureRazorpayPayment(input.orderId, input.paymentId);

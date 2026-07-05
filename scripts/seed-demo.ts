@@ -1,7 +1,8 @@
 import "dotenv/config";
 import { addMonths, format, subDays, subMonths } from "date-fns";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { encryptJson, maskHint } from "@/lib/crypto";
 import {
   apiKeys,
   apiPlans,
@@ -15,6 +16,7 @@ import {
   gymSettings,
   gymSubscriptions,
   gyms,
+  integrationPolicies,
   invoiceItems,
   invoices,
   memberReviews,
@@ -30,6 +32,7 @@ import {
   salaryStructures,
   sessionPacks,
   staffProfiles,
+  tenantCredentials,
   trainers,
   users,
   workoutExercises,
@@ -55,8 +58,8 @@ async function main() {
   // Platform + API plans.
   const platformPlanDefs: { key: string; name: string; pricePaise: number; memberCap: number | null; sortOrder: number; features: Record<string, boolean> }[] = [
     { key: "starter", name: "Starter", pricePaise: 99_900, memberCap: 100, sortOrder: 1, features: { classes: true, microsite: true } },
-    { key: "growth", name: "Growth", pricePaise: 249_900, memberCap: 500, sortOrder: 2, features: { classes: true, microsite: true, reports_advanced: true, whatsapp: true, pos: true, payroll: true } },
-    { key: "pro", name: "Pro", pricePaise: 499_900, memberCap: null, sortOrder: 3, features: { classes: true, microsite: true, reports_advanced: true, api_access: true, whatsapp: true, pos: true, payroll: true } },
+    { key: "growth", name: "Growth", pricePaise: 249_900, memberCap: 500, sortOrder: 2, features: { classes: true, microsite: true, reports_advanced: true, whatsapp: true, pos: true, payroll: true, byo_credentials: true } },
+    { key: "pro", name: "Pro", pricePaise: 499_900, memberCap: null, sortOrder: 3, features: { classes: true, microsite: true, reports_advanced: true, api_access: true, whatsapp: true, pos: true, payroll: true, byo_credentials: true } },
   ];
   const { platformPlans } = await import("@/lib/db/schema");
   for (const p of platformPlanDefs) {
@@ -77,6 +80,12 @@ async function main() {
     if (!ex) await db.insert(apiPlans).values(p);
   }
   const freeApiPlan = await db.query.apiPlans.findFirst({ where: eq(apiPlans.key, "free") });
+
+  // Default integration policies — platform-managed for every service.
+  for (const service of ["payments", "sms", "whatsapp", "email", "storage"] as const) {
+    const has = await db.query.integrationPolicies.findFirst({ where: and(isNull(integrationPolicies.gymId), eq(integrationPolicies.service, service)) });
+    if (!has) await db.insert(integrationPolicies).values({ gymId: null, service, mode: "platform", allowPlatformFallback: true });
+  }
 
   // Super admin.
   const adminEmail = process.env.DEMO_ADMIN_EMAIL ?? "admin@gymhere.app";
@@ -211,6 +220,19 @@ async function main() {
       const { raw, hash, prefix } = generateApiKey();
       await db.insert(apiKeys).values({ gymId: gym.id, name: "Demo integration", keyHash: hash, keyPrefix: prefix, scopes: ["read", "write"], apiPlanId: freeApiPlan.id });
       creds.push(`API key (${cfg.name}): ${raw}`);
+    }
+
+    // Demo: put IronWorks payments into tenant mode with dummy unverified keys so
+    // the whole platform↔tenant credential flow is immediately visible.
+    if (cfg.name === "IronWorks Fitness") {
+      await db.insert(integrationPolicies).values({ gymId: gym.id, service: "payments", mode: "tenant" });
+      await db.insert(tenantCredentials).values({
+        gymId: gym.id,
+        service: "payments",
+        encryptedPayload: encryptJson({ keyId: "rzp_test_DUMMY1234", keySecret: "dummysecret", webhookSecret: "whsec_dummy" }),
+        keyHint: maskHint("rzp_test_DUMMY1234"),
+        status: "unverified",
+      });
     }
 
     console.log(`  ✓ ${cfg.name}: ${cfg.memberCount} members, classes, POS, payroll, leads, reviews`);

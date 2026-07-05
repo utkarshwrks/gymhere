@@ -7,7 +7,11 @@ import { requireGym } from "@/lib/auth";
 import { invoices, payments, platformPlans } from "@/lib/db/schema";
 import { createOrder, verifyPaymentSignature } from "@/lib/razorpay";
 import { captureRazorpayPayment } from "@/lib/billing-core";
-import { isConfigured } from "@/lib/env";
+import {
+  getPlatformPaymentContext,
+  paymentsReady,
+  resolvePaymentContext,
+} from "@/lib/credentials/resolver";
 
 type Result<T = unknown> = { ok: true; data?: T } | { ok: false; error: string };
 
@@ -19,21 +23,23 @@ export interface CheckoutInfo {
   description: string;
 }
 
-/** Create a Razorpay order for an invoice's outstanding amount + a pending payment row. */
+/** Gym → member: create a Razorpay order using the gym's resolved credentials. */
 export async function startInvoiceCheckout(invoiceId: string): Promise<Result<CheckoutInfo>> {
-  if (!isConfigured.razorpay) return { ok: false, error: "Razorpay is not configured (add test keys)." };
   const ctx = await requireGym();
+  if (!(await paymentsReady(ctx.gym.id))) {
+    return { ok: false, error: "Online payments aren't set up for this gym yet." };
+  }
   const invoice = await db.query.invoices.findFirst({
     where: and(eq(invoices.gymId, ctx.gym.id), eq(invoices.id, invoiceId)),
   });
   if (!invoice) return { ok: false, error: "Invoice not found" };
   if (invoice.duePaise <= 0) return { ok: false, error: "Invoice is already paid" };
 
-  const order = await createOrder({
-    amountPaise: invoice.duePaise,
-    receipt: invoice.number,
-    notes: { invoiceId: invoice.id, gymId: ctx.gym.id, type: "invoice" },
-  });
+  const pay = await resolvePaymentContext(ctx.gym.id);
+  const order = await createOrder(
+    { amountPaise: invoice.duePaise, receipt: invoice.number, notes: { invoiceId: invoice.id, gymId: ctx.gym.id, type: "invoice" } },
+    { keyId: pay.keyId, keySecret: pay.keySecret },
+  );
 
   await db.insert(payments).values({
     gymId: ctx.gym.id,
@@ -45,24 +51,22 @@ export async function startInvoiceCheckout(invoiceId: string): Promise<Result<Ch
     razorpayOrderId: order.orderId,
   });
 
-  return {
-    ok: true,
-    data: { orderId: order.orderId, keyId: order.keyId, amountPaise: order.amountPaise, name: ctx.gym.name, description: `Invoice ${invoice.number}` },
-  };
+  return { ok: true, data: { orderId: order.orderId, keyId: order.keyId, amountPaise: order.amountPaise, name: ctx.gym.name, description: `Invoice ${invoice.number}` } };
 }
 
-/** Platform → gym: checkout to activate a SaaS tier when the trial ends / on upgrade. */
+/** Platform → gym: SaaS tier checkout ALWAYS uses platform Razorpay keys. */
 export async function startSubscriptionCheckout(planKey: string): Promise<Result<CheckoutInfo>> {
-  if (!isConfigured.razorpay) return { ok: false, error: "Razorpay is not configured (add test keys)." };
   const ctx = await requireGym();
+  const plat = getPlatformPaymentContext();
+  if (!plat.keyId || !plat.keySecret) return { ok: false, error: "Platform payments aren't configured." };
+
   const plan = await db.query.platformPlans.findFirst({ where: eq(platformPlans.key, planKey) });
   if (!plan) return { ok: false, error: "Plan not found" };
 
-  const order = await createOrder({
-    amountPaise: plan.pricePaise,
-    receipt: `sub-${ctx.gym.id.slice(0, 8)}`,
-    notes: { type: "gym_subscription", gymId: ctx.gym.id, planId: plan.id },
-  });
+  const order = await createOrder(
+    { amountPaise: plan.pricePaise, receipt: `sub-${ctx.gym.id.slice(0, 8)}`, notes: { type: "gym_subscription", gymId: ctx.gym.id, planId: plan.id } },
+    { keyId: plat.keyId, keySecret: plat.keySecret },
+  );
 
   await db.insert(payments).values({
     gymId: ctx.gym.id,
@@ -73,26 +77,27 @@ export async function startSubscriptionCheckout(planKey: string): Promise<Result
     note: `gym_subscription:${plan.id}`,
   });
 
-  return {
-    ok: true,
-    data: { orderId: order.orderId, keyId: order.keyId, amountPaise: order.amountPaise, name: "GymHere", description: `${plan.name} plan` },
-  };
+  return { ok: true, data: { orderId: order.orderId, keyId: order.keyId, amountPaise: order.amountPaise, name: "GymHere", description: `${plan.name} plan` } };
 }
 
-/** Client callback after Razorpay Checkout succeeds — verify signature then capture. */
-export async function verifyAndCapture(input: {
-  orderId: string;
-  paymentId: string;
-  signature: string;
-}): Promise<Result> {
+/** Client callback after Checkout succeeds — verify with the right secret, then capture. */
+export async function verifyAndCapture(input: { orderId: string; paymentId: string; signature: string }): Promise<Result> {
   const ctx = await requireGym();
-  if (!verifyPaymentSignature(input.orderId, input.paymentId, input.signature)) {
-    return { ok: false, error: "Signature verification failed" };
-  }
   const pending = await db.query.payments.findFirst({
     where: and(eq(payments.gymId, ctx.gym.id), eq(payments.razorpayOrderId, input.orderId)),
   });
   if (!pending) return { ok: false, error: "Order not found for this gym" };
+
+  // Subscription payments are signed with platform keys; invoice payments with
+  // the gym's resolved keys.
+  const isSubscription = pending.note?.startsWith("gym_subscription:") ?? false;
+  const keySecret = isSubscription
+    ? getPlatformPaymentContext().keySecret
+    : (await resolvePaymentContext(ctx.gym.id)).keySecret;
+
+  if (!verifyPaymentSignature(input.orderId, input.paymentId, input.signature, keySecret)) {
+    return { ok: false, error: "Signature verification failed" };
+  }
 
   const res = await captureRazorpayPayment(input.orderId, input.paymentId);
   if (!res.ok) return { ok: false, error: res.error };

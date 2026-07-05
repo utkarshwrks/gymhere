@@ -1,24 +1,25 @@
 import { NextResponse } from "next/server";
 import { verifyWebhookSignature } from "@/lib/razorpay";
 import { captureRazorpayPayment } from "@/lib/billing-core";
-import { isConfigured } from "@/lib/env";
+import { getPlatformPaymentContext } from "@/lib/credentials/resolver";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Single Razorpay webhook. Verifies the payload signature, then captures the
- * matching pending payment. Idempotent — a replayed event.id is a no-op because
- * captureRazorpayPayment short-circuits once a payment is captured.
+ * Platform Razorpay webhook. Handles platform-billing (SaaS subscription) events
+ * and platform-mode gym→member payments — all signed with the PLATFORM webhook
+ * secret. Tenant-mode gyms use /api/webhooks/razorpay/[gymId] instead.
+ * Idempotent: captureRazorpayPayment short-circuits an already-captured payment.
  */
 export async function POST(req: Request) {
-  if (!isConfigured.razorpay) {
+  const webhookSecret = getPlatformPaymentContext().webhookSecret;
+  if (!webhookSecret) {
     return NextResponse.json({ error: "Razorpay not configured" }, { status: 503 });
   }
 
   const rawBody = await req.text();
   const signature = req.headers.get("x-razorpay-signature") ?? "";
-
-  if (!verifyWebhookSignature(rawBody, signature)) {
+  if (!verifyWebhookSignature(rawBody, signature, webhookSecret)) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
@@ -37,13 +38,10 @@ export async function POST(req: Request) {
     }
   }
 
-  // Acknowledge unhandled events so Razorpay doesn't retry them.
   return NextResponse.json({ ok: true, ignored: event.event });
 }
 
 interface RazorpayEvent {
   event: string;
-  payload?: {
-    payment?: { entity?: { id: string; order_id: string; amount: number } };
-  };
+  payload?: { payment?: { entity?: { id: string; order_id: string; amount: number } } };
 }

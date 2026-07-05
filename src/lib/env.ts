@@ -30,6 +30,9 @@ const schema = z.object({
 
   CRON_SECRET: z.string().optional(),
 
+  // 32-byte key (hex or base64) for AES-256-GCM encryption of tenant credentials.
+  CREDENTIALS_ENCRYPTION_KEY: z.string().optional(),
+
   NEXT_PUBLIC_APP_URL: z.string().default("http://localhost:3000"),
 });
 

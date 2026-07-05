@@ -13,3 +13,4 @@ export * from "./social";
 export * from "./microsite";
 export * from "./platform";
 export * from "./api";
+export * from "./integrations";

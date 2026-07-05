@@ -96,12 +96,14 @@ export function InvoiceDetail({
           {invoice.duePaise > 0 && invoice.status !== "cancelled" && (
             <>
               <Button variant="outline" onClick={() => setPayOpen(true)}>Record payment</Button>
-              {razorpayEnabled && (
+              {razorpayEnabled ? (
                 <RazorpayButton
                   start={() => startInvoiceCheckout(invoice.id)}
                   label="Collect online"
                   prefill={{ name: memberName ?? undefined, email: memberContact.email, contact: memberContact.phone }}
                 />
+              ) : (
+                <Button asChild variant="outline"><Link href="/app/settings/integrations">Connect Razorpay</Link></Button>
               )}
             </>
           )}

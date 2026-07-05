@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { requireGym } from "@/lib/auth";
 import { getInvoice } from "@/lib/queries/billing";
-import { isConfigured } from "@/lib/env";
+import { paymentsReady } from "@/lib/credentials/resolver";
 import { InvoiceDetail } from "@/components/billing/invoice-detail";
 
 export const metadata: Metadata = { title: "Invoice" };
@@ -36,7 +36,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       payments={payments.map((p) => ({ id: p.id, amountPaise: p.amountPaise, method: p.method, createdAt: p.createdAt.toISOString() }))}
       memberName={member?.fullName ?? null}
       memberContact={{ email: member?.email ?? undefined, phone: member?.phone ?? undefined }}
-      razorpayEnabled={isConfigured.razorpay}
+      razorpayEnabled={await paymentsReady(ctx.gym.id)}
     />
   );
 }

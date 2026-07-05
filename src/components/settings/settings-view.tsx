@@ -35,6 +35,7 @@ export function SettingsView({
     <div className="space-y-6">
       <PageHeader title="Settings" description={`Configure ${gymName}.`}>
         <Button asChild variant="outline"><Link href="/app/settings/microsite">Microsite</Link></Button>
+        <Button asChild variant="outline"><Link href="/app/settings/api">API</Link></Button>
         <Button asChild variant="outline"><Link href="/app/settings/billing">Subscription</Link></Button>
       </PageHeader>
 

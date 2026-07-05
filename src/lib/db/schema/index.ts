@@ -12,3 +12,4 @@ export * from "./comms";
 export * from "./social";
 export * from "./microsite";
 export * from "./platform";
+export * from "./api";

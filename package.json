@@ -11,7 +11,9 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "seed": "tsx src/lib/db/seed.ts"
+    "seed": "tsx src/lib/db/seed.ts",
+    "seed:demo": "tsx scripts/seed-demo.ts",
+    "test:isolation": "tsx scripts/tenant-isolation.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.5.12",

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
@@ -24,14 +24,52 @@ export async function getClerkUserId(): Promise<string | null> {
   return userId ?? null;
 }
 
-/** The synced users row for the current session, or null. */
+/**
+ * The synced users row for the current session, or null.
+ *
+ * Falls back to just-in-time provisioning so local testing needs no Clerk
+ * webhook/tunnel: if there's a Clerk session but no matching row, we claim a
+ * seeded row with the same email (e.g. the seeded super admin) by attaching the
+ * real clerk_id, or create a fresh gym_owner. The webhook still handles updates
+ * and deletes in production.
+ */
 export async function getSessionUser(): Promise<SessionUser | null> {
   const clerkId = await getClerkUserId();
   if (!clerkId) return null;
-  const row = await db.query.users.findFirst({
-    where: eq(users.clerkId, clerkId),
-  });
-  return row ?? null;
+
+  const row = await db.query.users.findFirst({ where: eq(users.clerkId, clerkId) });
+  if (row) return row;
+
+  if (!isConfigured.db) return null;
+  return provisionUser(clerkId);
+}
+
+async function provisionUser(clerkId: string): Promise<SessionUser | null> {
+  const cu = await currentUser();
+  const email =
+    cu?.primaryEmailAddress?.emailAddress ??
+    cu?.emailAddresses?.[0]?.emailAddress ??
+    "";
+  const name = [cu?.firstName, cu?.lastName].filter(Boolean).join(" ") || null;
+  const imageUrl = cu?.imageUrl ?? null;
+
+  if (email) {
+    const seeded = await db.query.users.findFirst({ where: eq(users.email, email) });
+    if (seeded) {
+      const [claimed] = await db
+        .update(users)
+        .set({ clerkId, name: seeded.name ?? name, imageUrl, updatedAt: new Date() })
+        .where(eq(users.id, seeded.id))
+        .returning();
+      return claimed;
+    }
+  }
+
+  const [created] = await db
+    .insert(users)
+    .values({ clerkId, email, name, imageUrl, role: "gym_owner" })
+    .returning();
+  return created;
 }
 
 export interface GymContext {

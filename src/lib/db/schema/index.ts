@@ -4,3 +4,8 @@ export * from "./people";
 export * from "./sales";
 export * from "./ops";
 export * from "./audit";
+export * from "./money";
+export * from "./pos";
+export * from "./payroll";
+export * from "./classes";
+export * from "./comms";

@@ -15,6 +15,13 @@
       "when": 1783252347775,
       "tag": "0001_big_jubilee",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783259132623,
+      "tag": "0002_illegal_pepper_potts",
+      "breakpoints": true
     }
   ]
 }

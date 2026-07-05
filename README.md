@@ -14,7 +14,7 @@ Next.js 15 (App Router, TS strict) · Tailwind CSS v4 · shadcn-style UI · Driz
 | --- | --- | --- |
 | 1 | Foundation: auth, tenancy, design system, marketing site, onboarding | ✅ Done |
 | 2 | Gym admin core: dashboard, members, plans, CRM, attendance | ✅ Done |
-| 3 | Money & ops: billing, Razorpay, POS, payroll, classes, comms, reports | ⏳ Planned |
+| 3 | Money & ops: billing, Razorpay, POS, payroll, classes, comms, reports | ✅ Done |
 | 4 | Super admin, member portal, public microsites | ⏳ Planned |
 | 5 | Public API, security hardening, demo seed, deploy | ⏳ Planned |
 

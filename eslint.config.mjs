@@ -17,10 +17,18 @@ const eslintConfig = [
       "no-restricted-syntax": [
         "error",
         {
+          // Dot access: env.RAZORPAY_KEY_ID / process.env.RAZORPAY_KEY_ID
           selector:
             "MemberExpression[property.name=/^(RAZORPAY_KEY_ID|RAZORPAY_KEY_SECRET|RAZORPAY_WEBHOOK_SECRET|RESEND_API_KEY|UPLOADTHING_TOKEN)$/]",
           message:
             "Service keys must be resolved via lib/credentials/resolver (resolveCredentials / getPlatformValues), not read directly.",
+        },
+        {
+          // Computed access: env["RAZORPAY_KEY_ID"]
+          selector:
+            "MemberExpression[computed=true][property.value=/^(RAZORPAY_KEY_ID|RAZORPAY_KEY_SECRET|RAZORPAY_WEBHOOK_SECRET|RESEND_API_KEY|UPLOADTHING_TOKEN)$/]",
+          message:
+            "Service keys must be resolved via lib/credentials/resolver, not read directly.",
         },
       ],
     },

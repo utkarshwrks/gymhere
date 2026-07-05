@@ -95,8 +95,13 @@ export async function startMyInvoiceCheckout(invoiceId: string): Promise<Result<
 
 export async function verifyMyPayment(input: { orderId: string; paymentId: string; signature: string }): Promise<Result> {
   const ctx = await requireMember();
-  const pay = await resolvePaymentContext(ctx.gym.id);
-  if (!verifyPaymentSignature(input.orderId, input.paymentId, input.signature, pay.keySecret)) return { ok: false, error: "Signature verification failed" };
+  let keySecret: string;
+  try {
+    keySecret = (await resolvePaymentContext(ctx.gym.id)).keySecret;
+  } catch {
+    return { ok: false, error: "Payment credentials are no longer available." };
+  }
+  if (!verifyPaymentSignature(input.orderId, input.paymentId, input.signature, keySecret)) return { ok: false, error: "Signature verification failed" };
   const pending = await db.query.payments.findFirst({ where: and(eq(payments.gymId, ctx.gym.id), eq(payments.razorpayOrderId, input.orderId), eq(payments.memberId, ctx.member.id)) });
   if (!pending) return { ok: false, error: "Order not found" };
   const res = await captureRazorpayPayment(input.orderId, input.paymentId);

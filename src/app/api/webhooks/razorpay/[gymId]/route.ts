@@ -35,10 +35,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ gymId: 
   if (event.event === "payment.captured" || event.event === "order.paid") {
     const payment = event.payload?.payment?.entity;
     if (payment?.order_id && payment.id) {
-      // Ensure the order actually belongs to this gym before settling.
+      // Ensure the order belongs to this gym AND is a member invoice payment.
+      // Platform SaaS subscription orders (note gym_subscription:, invoiceId null)
+      // live in the platform Razorpay account and must NEVER be settleable with a
+      // gym's own webhook secret — otherwise a gym could self-sign a free upgrade.
       const pending = await db.query.payments.findFirst({ where: eq(payments.razorpayOrderId, payment.order_id) });
-      if (!pending || pending.gymId !== gymId) {
-        return NextResponse.json({ error: "Order does not belong to this gym" }, { status: 404 });
+      if (!pending || pending.gymId !== gymId || !pending.invoiceId) {
+        return NextResponse.json({ error: "Order is not a settleable invoice for this gym" }, { status: 404 });
       }
       const res = await captureRazorpayPayment(payment.order_id, payment.id);
       return NextResponse.json({ ok: true, result: res });

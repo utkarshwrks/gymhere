@@ -129,6 +129,7 @@ export async function saveTenantCreds(service: IntegrationService, values: Recor
 /** Safe "Test connection" ping — verifies stored creds without side effects. */
 export async function testTenantCreds(service: IntegrationService): Promise<Result<{ status: string }>> {
   const ctx = await requireGym();
+  if (ctx.user.role !== "gym_owner" && ctx.user.role !== "super_admin") return { ok: false, error: "Only the gym owner can manage integrations." };
   const row = await db.query.tenantCredentials.findFirst({ where: and(eq(tenantCredentials.gymId, ctx.gym.id), eq(tenantCredentials.service, service)) });
   if (!row) return { ok: false, error: "Save credentials first" };
 

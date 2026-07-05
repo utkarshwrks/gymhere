@@ -2,17 +2,10 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { gyms, integrationPolicies, tenantCredentials } from "@/lib/db/schema";
 import { ensureGlobalPolicies } from "@/lib/actions/integrations";
+import { FORM_SERVICES } from "@/lib/integrations/labels";
 import type { IntegrationService } from "@/lib/credentials/resolver";
 
 const SERVICES: IntegrationService[] = ["payments", "sms", "whatsapp", "email", "storage"];
-
-export const SERVICE_LABELS: Record<string, string> = {
-  payments: "Payments (Razorpay)",
-  sms: "SMS",
-  whatsapp: "WhatsApp",
-  email: "Email (Resend)",
-  storage: "File storage",
-};
 
 export interface SuperServiceRow {
   service: IntegrationService;
@@ -89,6 +82,7 @@ export async function gymIntegrationData(gymId: string): Promise<GymServiceRow[]
     const override = overrideByService.get(service);
     const effectiveMode = override?.mode ?? globalByService.get(service)?.mode ?? "platform";
     if (effectiveMode !== "tenant") continue; // gym page shows only tenant-mode services
+    if (!FORM_SERVICES.includes(service as (typeof FORM_SERVICES)[number])) continue; // only services with a credential form
     const cred = credByService.get(service);
     rows.push({
       service,

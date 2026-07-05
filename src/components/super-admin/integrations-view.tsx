@@ -20,7 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { setGlobalPolicy, forceRevert } from "@/lib/actions/integrations";
-import { SERVICE_LABELS } from "@/lib/queries/integrations";
+import { SERVICE_LABELS } from "@/lib/integrations/labels";
 import type { SuperServiceRow, TenantCredRow } from "@/lib/queries/integrations";
 import type { IntegrationService } from "@/lib/credentials/resolver";
 import { cn } from "@/lib/utils";

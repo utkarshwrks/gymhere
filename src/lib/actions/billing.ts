@@ -91,9 +91,12 @@ export async function verifyAndCapture(input: { orderId: string; paymentId: stri
   // Subscription payments are signed with platform keys; invoice payments with
   // the gym's resolved keys.
   const isSubscription = pending.note?.startsWith("gym_subscription:") ?? false;
-  const keySecret = isSubscription
-    ? getPlatformPaymentContext().keySecret
-    : (await resolvePaymentContext(ctx.gym.id)).keySecret;
+  let keySecret: string;
+  try {
+    keySecret = isSubscription ? getPlatformPaymentContext().keySecret : (await resolvePaymentContext(ctx.gym.id)).keySecret;
+  } catch {
+    return { ok: false, error: "Payment credentials are no longer available for this gym." };
+  }
 
   if (!verifyPaymentSignature(input.orderId, input.paymentId, input.signature, keySecret)) {
     return { ok: false, error: "Signature verification failed" };

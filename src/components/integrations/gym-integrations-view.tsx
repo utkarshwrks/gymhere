@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { deleteTenantCreds, saveTenantCreds, testTenantCreds } from "@/lib/actions/integrations";
-import { SERVICE_LABELS } from "@/lib/queries/integrations";
+import { SERVICE_LABELS } from "@/lib/integrations/labels";
 import type { GymServiceRow } from "@/lib/queries/integrations";
 import type { IntegrationService } from "@/lib/credentials/resolver";
 

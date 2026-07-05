@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { env } from "@/lib/env";
+import { env, isDemo } from "@/lib/env";
 
 /**
  * AES-256-GCM at-rest encryption for tenant credentials. The key comes from
@@ -14,6 +14,11 @@ function getKey(): Buffer {
     const b = Buffer.from(raw, "base64");
     if (b.length === 32) return b;
     return crypto.createHash("sha256").update(raw).digest();
+  }
+  // The deterministic dev key is only acceptable in demo. In production a missing
+  // key must fail loudly rather than silently encrypt with a source-tree key.
+  if (!isDemo) {
+    throw new Error("CREDENTIALS_ENCRYPTION_KEY is required in production (openssl rand -hex 32).");
   }
   return crypto.createHash("sha256").update("gymhere-demo-insecure-key").digest();
 }
@@ -42,9 +47,9 @@ export function decryptJson(payload: string): Record<string, string> {
   return JSON.parse(decryptSecret(payload)) as Record<string, string>;
 }
 
-/** Mask a secret for display, e.g. `rzp_live_••••4F2A`. */
+/** Mask a value for display, e.g. `rzp_live_••••4F2A`. Never reveals the whole
+ * string, even for short values. */
 export function maskHint(value: string): string {
-  const tail = value.slice(-4);
-  const head = value.length > 12 ? value.slice(0, 8) : value.slice(0, 4);
-  return `${head}••••${tail}`;
+  if (value.length <= 12) return `••••${value.slice(-2)}`;
+  return `${value.slice(0, 8)}••••${value.slice(-4)}`;
 }

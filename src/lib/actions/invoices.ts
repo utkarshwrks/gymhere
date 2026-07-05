@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireGym } from "@/lib/auth";
 import { recordCash } from "@/lib/db/cashbook";
+import { settleInvoiceAmount } from "@/lib/billing-core";
 import { logActivity } from "@/lib/db/activity";
 import { invoiceItems, invoices, members, payments } from "@/lib/db/schema";
 import { sendEmail } from "@/lib/messaging";
@@ -154,13 +155,7 @@ export async function applyPayment(input: {
     reference: input.razorpayPaymentId,
   });
 
-  const newPaid = invoice.amountPaidPaise + input.amountPaise;
-  const due = Math.max(0, invoice.totalPaise - newPaid);
-  const status = due <= 0 ? "paid" : "partial";
-  await db
-    .update(invoices)
-    .set({ amountPaidPaise: newPaid, duePaise: due, status })
-    .where(eq(invoices.id, invoice.id));
+  await settleInvoiceAmount(invoice.id, input.amountPaise);
 
   await recordCash({
     gymId,

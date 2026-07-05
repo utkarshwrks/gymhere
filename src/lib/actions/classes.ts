@@ -131,6 +131,7 @@ export async function completeAppointment(appointmentId: string): Promise<Result
   const { sql } = await import("drizzle-orm");
   const appt = await db.query.appointments.findFirst({ where: and(eq(appointments.gymId, ctx.gym.id), eq(appointments.id, appointmentId)) });
   if (!appt) return { ok: false, error: "Appointment not found" };
+  if (appt.status === "completed") return { ok: true }; // idempotent — don't decrement the pack twice
   await db.update(appointments).set({ status: "completed" }).where(eq(appointments.id, appointmentId));
   if (appt.sessionPackId) {
     await db.update(sessionPacks).set({ usedSessions: sql`LEAST(${sessionPacks.totalSessions}, ${sessionPacks.usedSessions} + 1)` }).where(eq(sessionPacks.id, appt.sessionPackId));

@@ -51,7 +51,7 @@ export interface MemberRowVM {
   planName: string | null;
   endDate: string | null;
   joinDate: string;
-  frozen: boolean;
+  subStatus: string | null;
 }
 interface PlanOpt {
   id: string;
@@ -61,7 +61,7 @@ interface PlanOpt {
 }
 
 function rowStatus(r: MemberRowVM) {
-  return deriveStatus(r.endDate ? { endDate: r.endDate, status: r.frozen ? "frozen" : "active" } : null);
+  return deriveStatus(r.endDate ? { endDate: r.endDate, status: r.subStatus ?? "active" } : null);
 }
 
 export function MembersView({

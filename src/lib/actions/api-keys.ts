@@ -24,8 +24,13 @@ export async function ensureApiPlans() {
   return db.select().from(apiPlans).orderBy(asc(apiPlans.monthlyQuota));
 }
 
+function isOwner(role: string): boolean {
+  return role === "gym_owner" || role === "super_admin";
+}
+
 export async function createApiKey(name: string): Promise<Result<{ raw: string }>> {
   const ctx = await requireGym();
+  if (!isOwner(ctx.user.role)) return { ok: false, error: "Only the gym owner can manage API keys." };
   if (!can(ctx.plan, "api_access")) return { ok: false, error: "API access isn't included in your plan. Upgrade to Pro." };
   if (!name.trim()) return { ok: false, error: "Name your key" };
 
@@ -42,6 +47,7 @@ export async function createApiKey(name: string): Promise<Result<{ raw: string }
 
 export async function rotateApiKey(keyId: string): Promise<Result<{ raw: string }>> {
   const ctx = await requireGym();
+  if (!isOwner(ctx.user.role)) return { ok: false, error: "Only the gym owner can manage API keys." };
   if (!can(ctx.plan, "api_access")) return { ok: false, error: "API access isn't included in your plan." };
   const { raw, hash, prefix } = generateApiKey();
   await db.update(apiKeys).set({ keyHash: hash, keyPrefix: prefix, isActive: true, lastUsedAt: null }).where(and(eq(apiKeys.gymId, ctx.gym.id), eq(apiKeys.id, keyId)));
@@ -51,6 +57,7 @@ export async function rotateApiKey(keyId: string): Promise<Result<{ raw: string 
 
 export async function revokeApiKey(keyId: string): Promise<Result> {
   const ctx = await requireGym();
+  if (!isOwner(ctx.user.role)) return { ok: false, error: "Only the gym owner can manage API keys." };
   await db.update(apiKeys).set({ isActive: false }).where(and(eq(apiKeys.gymId, ctx.gym.id), eq(apiKeys.id, keyId)));
   await logActivity({ gymId: ctx.gym.id, actorUserId: ctx.user.id, action: "plan.archived", entity: "api_key", entityId: keyId, summary: "API key revoked" });
   revalidatePath("/app/settings/api");

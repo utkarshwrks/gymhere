@@ -113,7 +113,7 @@ export function MemberProfile({
   plans: PlanOpt[];
 }) {
   const status = deriveStatus(
-    currentEndDate ? { endDate: currentEndDate, status: member.status === "frozen" ? "frozen" : "active" } : null,
+    currentEndDate ? { endDate: currentEndDate, status: member.status } : null,
   );
   const bmi = member.heightCm && member.weightKg
     ? Math.round((Number(member.weightKg) / Math.pow(Number(member.heightCm) / 100, 2)) * 10) / 10

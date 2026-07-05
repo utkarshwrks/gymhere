@@ -15,6 +15,11 @@ import { isConfigured } from "@/lib/env";
 
 export const IMPERSONATE_COOKIE = "gh_impersonate";
 
+/** Rows seeded/invited without a real login carry these clerk_id prefixes. */
+function isPlaceholderClerkId(clerkId: string): boolean {
+  return /^(seed_|invite_|staff_)/.test(clerkId);
+}
+
 async function getImpersonatedGymId(): Promise<string | null> {
   const store = await cookies();
   return store.get(IMPERSONATE_COOKIE)?.value ?? null;
@@ -64,7 +69,9 @@ async function provisionUser(clerkId: string): Promise<SessionUser | null> {
 
   if (email) {
     const seeded = await db.query.users.findFirst({ where: eq(users.email, email) });
-    if (seeded) {
+    // Only claim UNCLAIMED rows (seed/invite/staff placeholders). Never take over
+    // a row that already has a real Clerk id — that would be account takeover.
+    if (seeded && isPlaceholderClerkId(seeded.clerkId)) {
       const [claimed] = await db
         .update(users)
         .set({ clerkId, name: seeded.name ?? name, imageUrl, updatedAt: new Date() })
@@ -94,6 +101,12 @@ export interface GymContext {
 export async function getGymContext(): Promise<GymContext | null> {
   const user = await getSessionUser();
   if (!user) return null;
+
+  // Authorization boundary: only gym-management roles (or an impersonating super
+  // admin) get gym context. Members have a gymId too but must NOT be able to
+  // drive gym-owner server actions — those call requireGym() directly, bypassing
+  // the /app layout's redirect.
+  if (user.role !== "super_admin" && !isGymRole(user.role)) return null;
 
   let gymId = user.gymId;
   let impersonating = false;

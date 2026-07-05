@@ -28,7 +28,7 @@ export default async function MembersPage() {
     planName: m.currentSub?.planName ?? null,
     endDate: m.currentSub?.endDate ?? null,
     joinDate: m.joinDate,
-    frozen: m.status === "frozen" || m.currentSub?.status === "frozen",
+    subStatus: m.currentSub?.status ?? null,
   }));
 
   const cap = memberCap(ctx.plan);

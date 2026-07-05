@@ -1,4 +1,4 @@
-import { and, eq, gte, lte } from "drizzle-orm";
+import { and, eq, gte, lt, lte } from "drizzle-orm";
 import { format, parseISO } from "date-fns";
 import { db } from "@/lib/db";
 import {
@@ -50,9 +50,11 @@ export async function getReports(gymId: string, from: string, to: string): Promi
     db.select().from(users).where(eq(users.gymId, gymId)),
   ]);
 
-  // Revenue by month.
+  // Revenue by month — member payments only. Platform-subscription payments
+  // (invoiceId null) are the gym's OWN outflow, not its revenue.
+  const businessPays = pays.filter((p) => p.invoiceId);
   const revMap = new Map<string, number>();
-  for (const p of pays) {
+  for (const p of businessPays) {
     const key = format(p.createdAt, "MMM yyyy");
     revMap.set(key, (revMap.get(key) ?? 0) + p.amountPaise);
   }
@@ -70,13 +72,15 @@ export async function getReports(gymId: string, from: string, to: string): Promi
   const newMembers = memberRows.filter((m) => m.createdAt >= fromDate && m.createdAt <= toDate).length;
   const expiredMembers = subs.filter((s) => { const e = parseISO(s.endDate); return e >= fromDate && e <= toDate && e < now; }).length;
 
-  // GST.
-  const gstCollectedPaise = invoiceRows.reduce((s, i) => s + i.taxPaise, 0) + sales.reduce((s, x) => s + x.gstPaise, 0);
+  // GST actually collected — only on paid invoices (+ POS sales, which are paid).
+  const gstCollectedPaise =
+    invoiceRows.filter((i) => i.status === "paid").reduce((s, i) => s + i.taxPaise, 0) +
+    sales.reduce((s, x) => s + x.gstPaise, 0);
 
-  // Collections by staff.
+  // Collections by staff — member payments only (exclude subscription outflow).
   const nameById = new Map(staffUsers.map((u) => [u.id, u.name ?? u.email]));
   const collMap = new Map<string, number>();
-  for (const p of pays) {
+  for (const p of businessPays) {
     const key = p.collectedByUserId ? (nameById.get(p.collectedByUserId) ?? "Unknown") : "Online / system";
     collMap.set(key, (collMap.get(key) ?? 0) + p.amountPaise);
   }
@@ -96,9 +100,15 @@ export async function getReports(gymId: string, from: string, to: string): Promi
   for (const a of attRows) attByDay[a.checkInAt.getDay()]++;
   const attendanceHeat = DOW.map((day, i) => ({ day, count: attByDay[i] }));
 
-  // Cash book with running balance.
+  // Cash book with running balance — seeded with the opening balance (all cash
+  // movement before the range) so the balance column is true cash-on-hand.
+  const priorEntries = await db
+    .select({ direction: cashbookEntries.direction, amountPaise: cashbookEntries.amountPaise })
+    .from(cashbookEntries)
+    .where(and(eq(cashbookEntries.gymId, gymId), lt(cashbookEntries.occurredAt, fromDate)));
+  let balance = priorEntries.reduce((sum, e) => sum + (e.direction === "in" ? e.amountPaise : -e.amountPaise), 0);
+
   const sorted = [...entries].sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime());
-  let balance = 0;
   const cashbook = sorted.map((e) => {
     balance += e.direction === "in" ? e.amountPaise : -e.amountPaise;
     return { id: e.id, occurredAt: e.occurredAt.toISOString(), direction: e.direction, source: e.source, description: e.description, amountPaise: e.amountPaise, balancePaise: balance };

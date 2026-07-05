@@ -18,6 +18,9 @@ export function deriveStatus(
 ): DerivedStatus | "none" {
   if (!sub) return "none";
   if (sub.status === "frozen") return "frozen";
+  // A cancelled/expired/inactive subscription is never "active" regardless of
+  // any remaining end date.
+  if (sub.status === "cancelled" || sub.status === "expired" || sub.status === "inactive") return "expired";
   const end = typeof sub.endDate === "string" ? parseISO(sub.endDate) : sub.endDate;
   const daysLeft = differenceInCalendarDays(end, new Date());
   if (daysLeft < 0) return "expired";

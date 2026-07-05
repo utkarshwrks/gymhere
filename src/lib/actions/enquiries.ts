@@ -132,6 +132,7 @@ export async function convertEnquiry(input: z.input<typeof convertSchema>): Prom
     where: and(eq(enquiries.gymId, ctx.gym.id), eq(enquiries.id, enquiryId)),
   });
   if (!enquiry) return { ok: false, error: "Enquiry not found" };
+  if (enquiry.convertedMemberId) return { ok: false, error: "This lead is already converted" };
 
   const count = await memberCount(ctx.gym.id);
   if (atMemberCap(ctx.plan, count)) return { ok: false, error: `Member cap reached (${ctx.plan?.memberCap}). Upgrade to convert.` };

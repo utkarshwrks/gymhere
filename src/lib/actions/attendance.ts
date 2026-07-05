@@ -36,14 +36,22 @@ export async function inviteMember(memberId: string): Promise<Result> {
   if (!member.email) return { ok: false, error: "Add an email to the member first" };
 
   const existing = await db.query.users.findFirst({ where: eq(users.email, member.email) });
-  const [user] = existing
-    ? [existing]
-    : await db.insert(users).values({ clerkId: `invite_${member.id.slice(0, 12)}`, email: member.email, name: member.fullName, role: "member", gymId: ctx.gym.id }).returning();
-
+  let userId: string;
   if (existing) {
-    await db.update(users).set({ role: "member", gymId: ctx.gym.id }).where(eq(users.id, user.id));
+    // Never downgrade/steal a staff, owner, or other-gym account.
+    if (existing.role !== "member" || (existing.gymId && existing.gymId !== ctx.gym.id)) {
+      return { ok: false, error: "That email already belongs to another account." };
+    }
+    userId = existing.id;
+    if (!existing.gymId) await db.update(users).set({ gymId: ctx.gym.id }).where(eq(users.id, existing.id));
+  } else {
+    const [created] = await db
+      .insert(users)
+      .values({ clerkId: `invite_${member.id.slice(0, 12)}`, email: member.email, name: member.fullName, role: "member", gymId: ctx.gym.id })
+      .returning();
+    userId = created.id;
   }
-  await db.update(members).set({ userId: user.id, updatedAt: new Date() }).where(eq(members.id, member.id));
+  await db.update(members).set({ userId, updatedAt: new Date() }).where(eq(members.id, member.id));
 
   await sendEmail({
     gymId: ctx.gym.id,

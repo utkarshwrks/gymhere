@@ -122,13 +122,21 @@ export async function recordSale(input: z.input<typeof saleSchema>): Promise<Res
   const prods = await db.select().from(products).where(eq(products.gymId, ctx.gym.id));
   const byId = new Map(prods.map((p) => [p.id, p]));
 
+  // Aggregate duplicate line items per product so the stock check can't be
+  // bypassed by splitting one product across multiple lines.
+  const qtyByProduct = new Map<string, number>();
+  for (const it of data.items) qtyByProduct.set(it.productId, (qtyByProduct.get(it.productId) ?? 0) + it.qty);
+  for (const [pid, qty] of qtyByProduct) {
+    const p = byId.get(pid);
+    if (!p) return { ok: false, error: "Product not found" };
+    if (p.stockQty < qty) return { ok: false, error: `Not enough stock of ${p.name}` };
+  }
+
   let subtotal = 0;
   let gst = 0;
   const lines: (typeof posSaleItems.$inferInsert)[] = [];
   for (const it of data.items) {
-    const p = byId.get(it.productId);
-    if (!p) return { ok: false, error: "Product not found" };
-    if (p.stockQty < it.qty) return { ok: false, error: `Not enough stock of ${p.name}` };
+    const p = byId.get(it.productId)!;
     const amount = p.sellPricePaise * it.qty;
     const lineGst = Math.round((amount * Number(p.gstPercent)) / 100);
     subtotal += amount;

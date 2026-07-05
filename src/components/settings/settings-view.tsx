@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Clock, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -32,7 +33,10 @@ export function SettingsView({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Settings" description={`Configure ${gymName}.`} />
+      <PageHeader title="Settings" description={`Configure ${gymName}.`}>
+        <Button asChild variant="outline"><Link href="/app/settings/microsite">Microsite</Link></Button>
+        <Button asChild variant="outline"><Link href="/app/settings/billing">Subscription</Link></Button>
+      </PageHeader>
 
       {/* Batches */}
       <Card>

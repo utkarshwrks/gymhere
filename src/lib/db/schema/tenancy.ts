@@ -36,6 +36,14 @@ export const gymSettings = pgTable("gym_settings", {
   phone: text("phone"),
   email: text("email"),
   primaryColor: text("primary_color").default("#b5f31d"),
+  // Microsite
+  micrositePublished: boolean("microsite_published").notNull().default(false),
+  heroTagline: text("hero_tagline"),
+  aboutText: text("about_text"),
+  openingHours: jsonb("opening_hours").$type<{ day: string; hours: string }[]>(),
+  mapEmbedUrl: text("map_embed_url"),
+  // Biometric device webhook signing secret
+  deviceSecret: text("device_secret"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

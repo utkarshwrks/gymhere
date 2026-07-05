@@ -9,3 +9,6 @@ export * from "./pos";
 export * from "./payroll";
 export * from "./classes";
 export * from "./comms";
+export * from "./social";
+export * from "./microsite";
+export * from "./platform";

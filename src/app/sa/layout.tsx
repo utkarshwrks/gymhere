@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { LayoutDashboard } from "lucide-react";
+import { Building2, LayoutDashboard, Megaphone, Tags } from "lucide-react";
 import { AppShell, type NavItem } from "@/components/shared/app-shell";
 import { UserMenu } from "@/components/shared/user-menu";
 import { getSessionUser } from "@/lib/auth";
@@ -9,6 +9,9 @@ export const dynamic = "force-dynamic";
 
 const nav: NavItem[] = [
   { href: "/sa", label: "Overview", icon: LayoutDashboard, exact: true },
+  { href: "/sa/tenants", label: "Gyms", icon: Building2 },
+  { href: "/sa/plans", label: "SaaS tiers", icon: Tags },
+  { href: "/sa/announcements", label: "Announcements", icon: Megaphone },
 ];
 
 export default async function SuperAdminLayout({

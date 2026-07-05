@@ -117,3 +117,9 @@ export const outboxStatusEnum = pgEnum("outbox_status", [
   "sent",
   "failed",
 ]);
+
+export const reviewStatusEnum = pgEnum("review_status", [
+  "pending",
+  "approved",
+  "hidden",
+]);

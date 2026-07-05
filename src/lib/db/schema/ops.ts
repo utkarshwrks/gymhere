@@ -1,6 +1,8 @@
 import {
+  boolean,
   integer,
   pgTable,
+  text,
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -24,5 +26,15 @@ export const attendance = pgTable("attendance", {
   checkInAt: timestamp("check_in_at", { withTimezone: true }).notNull().defaultNow(),
   checkOutAt: timestamp("check_out_at", { withTimezone: true }),
   durationMins: integer("duration_mins"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Registered biometric/access devices (ESSL-style). Punches arrive by serial. */
+export const attendanceDevices = pgTable("attendance_devices", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  gymId: uuid("gym_id").notNull().references(() => gyms.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  serial: text("serial").notNull().unique(),
+  isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

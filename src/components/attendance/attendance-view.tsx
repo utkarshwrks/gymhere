@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarCheck, Search, Zap } from "lucide-react";
+import { CalendarCheck, QrCode, Search, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
@@ -60,7 +61,10 @@ export function AttendanceView({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Attendance" description="Search a member and check them in, or review the daily log." />
+      <PageHeader title="Attendance" description="Search a member and check them in, or review the daily log.">
+        <Button asChild variant="outline"><Link href="/app/attendance/scan"><QrCode className="size-4" /> Scan QR</Link></Button>
+        <Button asChild variant="outline"><Link href="/app/attendance/live">Live board</Link></Button>
+      </PageHeader>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

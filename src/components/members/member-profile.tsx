@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   CreditCard,
+  Mail,
   MoreVertical,
   PauseCircle,
   PlayCircle,
@@ -63,6 +64,7 @@ import {
   unfreezeMember,
   updateMemberNotes,
 } from "@/lib/actions/members";
+import { inviteMember } from "@/lib/actions/attendance";
 import { deriveStatus, statusLabel, statusToTone } from "@/lib/membership";
 import { formatDate, formatDateTime, formatMoney, initials } from "@/lib/format";
 
@@ -287,6 +289,14 @@ function MemberActions({ member, plans, frozen }: { member: ProfileMember; plans
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => setRenewOpen(true)}><RefreshCw className="size-4" /> Renew</DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={async () => {
+              const r = await inviteMember(member.id);
+              if (r.ok) toast.success("Portal invite sent"); else toast.error(r.error);
+            }}
+          >
+            <Mail className="size-4" /> Invite to portal
+          </DropdownMenuItem>
           {frozen ? (
             <DropdownMenuItem
               onClick={async () => {

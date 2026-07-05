@@ -30,12 +30,14 @@ type StartResult = { ok: true; data?: CheckoutInfo } | { ok: false; error: strin
 
 export function RazorpayButton({
   start,
+  verify = verifyAndCapture,
   label = "Pay with Razorpay",
   prefill,
   size,
   className,
 }: {
   start: () => Promise<StartResult>;
+  verify?: (args: { orderId: string; paymentId: string; signature: string }) => Promise<{ ok: true } | { ok: false; error: string }>;
   label?: string;
   prefill?: { name?: string; email?: string; contact?: string };
   size?: "sm" | "default" | "lg";
@@ -68,7 +70,7 @@ export function RazorpayButton({
         prefill,
         theme: { color: "#0b0f0c" },
         handler: async (resp: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
-          const v = await verifyAndCapture({
+          const v = await verify({
             orderId: resp.razorpay_order_id,
             paymentId: resp.razorpay_payment_id,
             signature: resp.razorpay_signature,

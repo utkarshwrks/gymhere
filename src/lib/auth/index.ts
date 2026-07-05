@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { and, eq, ne } from "drizzle-orm";
@@ -5,11 +6,19 @@ import { db } from "@/lib/db";
 import {
   gymSubscriptions,
   gyms,
+  members,
   platformPlans,
   users,
   type roleEnum,
 } from "@/lib/db/schema";
 import { isConfigured } from "@/lib/env";
+
+export const IMPERSONATE_COOKIE = "gh_impersonate";
+
+async function getImpersonatedGymId(): Promise<string | null> {
+  const store = await cookies();
+  return store.get(IMPERSONATE_COOKIE)?.value ?? null;
+}
 
 export type Role = (typeof roleEnum.enumValues)[number];
 
@@ -77,14 +86,27 @@ export interface GymContext {
   gym: typeof gyms.$inferSelect;
   subscription: typeof gymSubscriptions.$inferSelect | null;
   plan: typeof platformPlans.$inferSelect | null;
+  impersonating: boolean;
 }
 
-/** Full gym context for /app: the user's gym, its active subscription and plan. */
+/** Full gym context for /app: the user's gym, its active subscription and plan.
+ * A super admin with an active impersonation cookie sees that gym instead. */
 export async function getGymContext(): Promise<GymContext | null> {
   const user = await getSessionUser();
-  if (!user || !user.gymId) return null;
+  if (!user) return null;
 
-  const gym = await db.query.gyms.findFirst({ where: eq(gyms.id, user.gymId) });
+  let gymId = user.gymId;
+  let impersonating = false;
+  if (user.role === "super_admin") {
+    const imp = await getImpersonatedGymId();
+    if (imp) {
+      gymId = imp;
+      impersonating = true;
+    }
+  }
+  if (!gymId) return null;
+
+  const gym = await db.query.gyms.findFirst({ where: eq(gyms.id, gymId) });
   if (!gym) return null;
 
   const subscription = await db.query.gymSubscriptions.findFirst({
@@ -101,13 +123,36 @@ export async function getGymContext(): Promise<GymContext | null> {
       })) ?? null)
     : null;
 
-  return { user, gym, subscription: subscription ?? null, plan };
+  return { user, gym, subscription: subscription ?? null, plan, impersonating };
 }
 
 /** Gym context or redirect. Use at the top of every /app page and server action. */
 export async function requireGym(): Promise<GymContext> {
   const ctx = await getGymContext();
   if (!ctx) redirect("/onboarding");
+  return ctx;
+}
+
+export interface MemberContext {
+  user: SessionUser;
+  member: typeof members.$inferSelect;
+  gym: typeof gyms.$inferSelect;
+}
+
+/** Portal context for /me: the member row linked to the signed-in user. */
+export async function getMemberContext(): Promise<MemberContext | null> {
+  const user = await getSessionUser();
+  if (!user || user.role !== "member") return null;
+  const member = await db.query.members.findFirst({ where: eq(members.userId, user.id) });
+  if (!member) return null;
+  const gym = await db.query.gyms.findFirst({ where: eq(gyms.id, member.gymId) });
+  if (!gym) return null;
+  return { user, member, gym };
+}
+
+export async function requireMember(): Promise<MemberContext> {
+  const ctx = await getMemberContext();
+  if (!ctx) redirect("/sign-in");
   return ctx;
 }
 

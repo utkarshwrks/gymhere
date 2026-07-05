@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -63,6 +64,13 @@ export async function getGymContext(): Promise<GymContext | null> {
     : null;
 
   return { user, gym, subscription: subscription ?? null, plan };
+}
+
+/** Gym context or redirect. Use at the top of every /app page and server action. */
+export async function requireGym(): Promise<GymContext> {
+  const ctx = await getGymContext();
+  if (!ctx) redirect("/onboarding");
+  return ctx;
 }
 
 export function isGymRole(role: Role): boolean {

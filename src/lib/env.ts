@@ -28,6 +28,8 @@ const schema = z.object({
   UPSTASH_REDIS_REST_URL: z.string().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
 
+  CRON_SECRET: z.string().optional(),
+
   NEXT_PUBLIC_APP_URL: z.string().default("http://localhost:3000"),
 });
 

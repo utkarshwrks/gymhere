@@ -1,5 +1,12 @@
 import { redirect } from "next/navigation";
-import { LayoutDashboard } from "lucide-react";
+import {
+  CalendarCheck,
+  KanbanSquare,
+  LayoutDashboard,
+  LineChart,
+  Tags,
+  Users,
+} from "lucide-react";
 import { AppShell, type NavItem } from "@/components/shared/app-shell";
 import { UserMenu } from "@/components/shared/user-menu";
 import { TrialBanner } from "@/components/shared/trial-banner";
@@ -11,6 +18,11 @@ export const dynamic = "force-dynamic";
 
 const nav: NavItem[] = [
   { href: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/app/members", label: "Members", icon: Users },
+  { href: "/app/plans", label: "Plans", icon: Tags },
+  { href: "/app/enquiries", label: "Enquiries", icon: KanbanSquare },
+  { href: "/app/attendance", label: "Attendance", icon: CalendarCheck },
+  { href: "/app/retention", label: "Retention", icon: LineChart },
 ];
 
 export default async function AppLayout({
@@ -45,6 +57,7 @@ export default async function AppLayout({
           imageUrl={user.imageUrl}
           roleLabel={ctx.gym.name}
           clerkEnabled={isConfigured.clerk}
+          settingsHref="/app/settings"
         />
       }
     >

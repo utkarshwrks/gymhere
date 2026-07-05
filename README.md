@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GymHere
 
-## Getting Started
+Multi-tenant gym management SaaS — super-admin panel, gym-owner admin, member portal, public gym microsites, payments, and a sellable public API. Demo-ready on free tiers; production-ready by swapping environment keys.
 
-First, run the development server:
+Built to the spec in [`BUILD-PLAN.md`](./BUILD-PLAN.md).
+
+## Stack
+
+Next.js 15 (App Router, TS strict) · Tailwind CSS v4 · shadcn-style UI · Drizzle ORM + Neon Postgres · Clerk auth · Razorpay · UploadThing · Resend · Upstash Redis · Framer Motion · Recharts · Zod.
+
+## Phase progress
+
+| Phase | Scope | Status |
+| --- | --- | --- |
+| 1 | Foundation: auth, tenancy, design system, marketing site, onboarding | ✅ Done |
+| 2 | Gym admin core: dashboard, members, plans, CRM, attendance | ⏳ Planned |
+| 3 | Money & ops: billing, Razorpay, POS, payroll, classes, comms, reports | ⏳ Planned |
+| 4 | Super admin, member portal, public microsites | ⏳ Planned |
+| 5 | Public API, security hardening, demo seed, deploy | ⏳ Planned |
+
+## Getting started
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # fill with your keys (all optional in demo mode)
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app runs in **demo mode** with no keys set: marketing, pricing and the onboarding UI render, and protected areas redirect to sign-in. Add keys to activate each service.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Database (when DATABASE_URL is set)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run db:generate   # generate SQL from the Drizzle schema
+npm run db:push       # apply schema to Neon (or db:migrate for migration files)
+npm run seed          # seed super admin + 3 platform plans + 1 demo gym
+```
 
-## Learn More
+## Demo → production (key swap, no code changes)
 
-To learn more about Next.js, take a look at the following resources:
+Every external service reads from env vars. Production is a key swap plus `APP_MODE=production` and `RAZORPAY_MODE=live`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Var | Demo | Production |
+| --- | --- | --- |
+| `DATABASE_URL` | Neon dev branch | Neon prod branch |
+| `CLERK_SECRET_KEY` | `sk_test_…` | `sk_live_…` |
+| `RAZORPAY_KEY_ID` | `rzp_test_…` | `rzp_live_…` |
+| `RAZORPAY_WEBHOOK_SECRET` | `whsec_test` | `whsec_live` |
+| `RESEND_API_KEY` | `re_test_…` | `re_live_…` |
+| `APP_MODE` | `demo` | `production` |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Project structure
 
-## Deploy on Vercel
+```
+src/
+  app/
+    (marketing)/        landing, pricing (from DB), contact, developers
+    (auth)/             sign-in, sign-up (Clerk)
+    onboarding/         3-step gym setup wizard → 14-day trial
+    app/                gym owner/staff area (dashboard)
+    sa/                 super admin area
+    me/                 member portal
+    api/                clerk webhook, uploadthing
+  components/
+    ui/                 shadcn-style primitives
+    shared/             AppShell, StatCard, DataTable, PageHeader, ConfirmDialog…
+    marketing/ onboarding/
+  lib/
+    db/                 Drizzle schema, client, withGym() tenancy guard, seed
+    auth/               session + gym context + role helpers
+    env.ts features.ts plans.ts format.ts
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Conventions
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+TS strict, no `any`. Mutations via server actions with Zod schemas. Every gym-scoped query goes through `withGym()`. Money stored as integer paise, rendered with `Intl.NumberFormat('en-IN')`. Dates in UTC via date-fns.

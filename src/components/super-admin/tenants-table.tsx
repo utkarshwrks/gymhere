@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Ban, CircleCheck, Eye, MoreVertical } from "lucide-react";
+import { Ban, CircleCheck, Eye, MoreVertical, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { DataTable } from "@/components/shared/data-table";
 import { StatusDot } from "@/components/shared/status-dot";
@@ -17,7 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { setGymStatus, startImpersonation } from "@/lib/actions/super-admin";
+import { deleteGym, setGymStatus, startImpersonation } from "@/lib/actions/super-admin";
 import type { TenantRow } from "@/lib/queries/platform";
 
 export function TenantsTable({ tenants }: { tenants: TenantRow[] }) {
@@ -64,6 +64,13 @@ export function TenantsTable({ tenants }: { tenants: TenantRow[] }) {
                     <CircleCheck className="size-4" /> Reactivate
                   </DropdownMenuItem>
                 )}
+                <ConfirmDialog
+                  title={`Delete ${t.name}?`}
+                  description="This permanently deletes the gym and ALL its data — members, billing, attendance, staff and the owner account. This cannot be undone."
+                  confirmLabel="Delete permanently"
+                  onConfirm={async () => { const r = await deleteGym(t.id); if (r.ok) { toast.success("Gym deleted"); router.refresh(); } else toast.error(r.error); }}
+                  trigger={<DropdownMenuItem variant="destructive" onSelect={(e) => e.preventDefault()}><Trash2 className="size-4" /> Delete</DropdownMenuItem>}
+                />
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "../../../scripts/load-env";
 import { addDays, format, subDays } from "date-fns";
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "./index";

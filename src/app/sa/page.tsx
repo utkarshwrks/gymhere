@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Building2, IndianRupee, TrendingDown, Users } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
-import { StatCard } from "@/components/shared/stat-card";
+import { StatCard, type FormatKey } from "@/components/shared/stat-card";
+import type { IconName } from "@/components/shared/icon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { platformStats, trialFunnel } from "@/lib/queries/platform";
-import { formatMoneyCompact } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Platform overview" };
 export const dynamic = "force-dynamic";
@@ -14,11 +13,11 @@ export const dynamic = "force-dynamic";
 export default async function SuperAdminHome() {
   const [stats, funnel] = await Promise.all([platformStats(), trialFunnel()]);
 
-  const cards = [
-    { label: "Total gyms", value: stats.totalGyms, icon: Building2 },
-    { label: "Trialing", value: stats.trialing, icon: Users },
-    { label: "Active MRR", value: stats.mrrPaise, icon: IndianRupee, format: formatMoneyCompact },
-    { label: "Churn (30d)", value: stats.churn30d, icon: TrendingDown },
+  const cards: { label: string; value: number; icon: IconName; format?: FormatKey }[] = [
+    { label: "Total gyms", value: stats.totalGyms, icon: "Building2" },
+    { label: "Trialing", value: stats.trialing, icon: "Users" },
+    { label: "Active MRR", value: stats.mrrPaise, icon: "IndianRupee", format: "money" },
+    { label: "Churn (30d)", value: stats.churn30d, icon: "TrendingDown" },
   ];
 
   const funnelSteps = [

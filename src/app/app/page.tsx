@@ -1,23 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  Activity,
-  CalendarClock,
-  Cake,
-  IndianRupee,
-  TrendingUp,
-  UserCheck,
-  Users,
-  Wallet,
-} from "lucide-react";
+import { Activity, Cake } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
-import { StatCard } from "@/components/shared/stat-card";
+import { StatCard, type FormatKey } from "@/components/shared/stat-card";
+import type { IconName } from "@/components/shared/icon";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GrowthChart, RevenueChart } from "@/components/dashboard/charts";
 import { requireGym } from "@/lib/auth";
 import { getDashboard } from "@/lib/queries/dashboard";
-import { daysUntil, formatDate, formatMoneyCompact, fromNow } from "@/lib/format";
+import { daysUntil, formatDate, fromNow } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
@@ -31,13 +23,13 @@ export default async function DashboardPage() {
       ? Math.max(0, daysUntil(ctx.subscription.trialEndsAt))
       : null;
 
-  const stats = [
-    { label: "Total members", value: d.totalMembers, icon: Users },
-    { label: "Active members", value: d.activeMembers, icon: UserCheck },
-    { label: "MRR", value: d.mrrPaise, icon: IndianRupee, format: formatMoneyCompact },
-    { label: "Pending dues", value: d.pendingDuesPaise, icon: Wallet, format: formatMoneyCompact },
-    { label: "Today's check-ins", value: d.todayCheckins, icon: TrendingUp, live: true },
-    { label: "Expiring in 7 days", value: d.expiringSoon, icon: CalendarClock },
+  const stats: { label: string; value: number; icon: IconName; format?: FormatKey; live?: boolean }[] = [
+    { label: "Total members", value: d.totalMembers, icon: "Users" },
+    { label: "Active members", value: d.activeMembers, icon: "UserCheck" },
+    { label: "MRR", value: d.mrrPaise, icon: "IndianRupee", format: "money" },
+    { label: "Pending dues", value: d.pendingDuesPaise, icon: "Wallet", format: "money" },
+    { label: "Today's check-ins", value: d.todayCheckins, icon: "TrendingUp", live: true },
+    { label: "Expiring in 7 days", value: d.expiringSoon, icon: "CalendarClock" },
   ];
 
   return (

@@ -27,7 +27,7 @@ cp .env.example .env.local   # fill with your keys (all optional in demo mode)
 npm run dev                  # http://localhost:3000
 ```
 
-The app runs in **demo mode** with no keys set: marketing, pricing and the onboarding UI render, and protected areas redirect to sign-in. Add keys to activate each service.
+The app runs in **demo mode** with no keys set: marketing and pricing render, and protected areas redirect to sign-in. Add keys to activate each service. Gyms are provisioned by a **super admin only** — there is no public self-serve signup.
 
 ### Database (when DATABASE_URL is set)
 
@@ -39,7 +39,7 @@ npm run seed:demo     # rich demo: 2 gyms, ~45 members, 6mo history, POS, payrol
 npm run test:isolation # tenant-isolation audit (cross-gym reads/writes must be denied)
 ```
 
-Set `DEMO_OWNER_EMAIL` / `DEMO_ADMIN_EMAIL` to your own email before seeding, then sign up with it to claim that role.
+Set `DEMO_OWNER_EMAIL` / `DEMO_ADMIN_EMAIL` to your own email before seeding, then sign up with it to claim that role. As super admin you create additional gyms + owners from `/sa` → Gyms → Create gym (no self-serve signup).
 
 ## Public API
 
@@ -53,14 +53,28 @@ curl https://<your-app>/api/v1/members -H "Authorization: Bearer ghk_..."
 
 Security headers (CSP, HSTS, X-Frame-Options, Referrer-Policy, Permissions-Policy) are set in `next.config.ts`. Every gym-scoped query goes through `withGym()`; RBAC is enforced by `requireGym` / `requireMember` / super-admin guards. Run `npm run test:isolation` to verify cross-tenant access is denied. All user content is rendered through React (auto-escaped); no server-only secret is exposed to the client (only `NEXT_PUBLIC_*`).
 
-## Deploy (Vercel)
+## Deploy (Render)
 
-1. Push this repo to GitHub and import it in Vercel.
-2. Add env vars (from `.env.example`) — swap test keys for live where applicable and set `APP_MODE=production`, `RAZORPAY_MODE=live`.
-3. Create a **Neon** production branch → set `DATABASE_URL`; run `npm run db:push` against it, then `npm run seed:demo` (or your real data).
-4. Cron jobs in `vercel.json` (`/api/cron/retention`, `/api/cron/reminders`) run automatically on Hobby daily schedules; set `CRON_SECRET` to authorize them.
-5. Register the **Razorpay** webhook → `https://<your-app>/api/webhooks/razorpay` (and the Clerk webhook → `/api/webhooks/clerk`).
+The repo ships a `render.yaml` Blueprint that provisions the web service plus the
+two cron jobs.
+
+1. Push this repo to GitHub → in Render, **New + → Blueprint** → pick the repo. Render
+   reads `render.yaml` and creates the `gymhere` web service and the
+   `gymhere-retention` / `gymhere-reminders` cron jobs.
+2. Fill the prompted secrets (every `sync: false` var) with your **live** keys.
+   `APP_MODE=production` and `RAZORPAY_MODE=live` are preset; `CRON_SECRET` is
+   generated automatically and shared to the cron jobs.
+3. Set `NEXT_PUBLIC_APP_URL` to your Render URL (`https://<service>.onrender.com`) or
+   custom domain.
+4. Create a **Neon** production branch → set `DATABASE_URL`; run `npm run db:push`
+   against it, then `npm run seed:demo` (or import your real data).
+5. Register the **Razorpay** webhook → `https://<your-app>/api/webhooks/razorpay` (and
+   the Clerk webhook → `/api/webhooks/clerk`).
 6. Point your domain; the PWA manifest (`/manifest.webmanifest`) makes it installable.
+
+The build (`npm ci && npm run build`) type-checks and lints; `next start` binds to
+Render's injected `$PORT` automatically. `vercel.json` is kept so the app can also
+deploy to Vercel unchanged.
 
 ## Demo → production (key swap, no code changes)
 
@@ -82,7 +96,7 @@ src/
   app/
     (marketing)/        landing, pricing (from DB), contact, developers
     (auth)/             sign-in, sign-up (Clerk)
-    onboarding/         3-step gym setup wizard → 14-day trial
+    onboarding/         "no gym linked" notice (gyms are created by super admin)
     app/                gym owner/staff area (dashboard)
     sa/                 super admin area
     me/                 member portal
@@ -90,7 +104,8 @@ src/
   components/
     ui/                 shadcn-style primitives
     shared/             AppShell, StatCard, DataTable, PageHeader, ConfirmDialog…
-    marketing/ onboarding/
+    marketing/          landing + pricing sections
+    super-admin/        tenants table, create-gym dialog, admins, tiers…
   lib/
     db/                 Drizzle schema, client, withGym() tenancy guard, seed
     auth/               session + gym context + role helpers

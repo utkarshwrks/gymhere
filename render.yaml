@@ -1,0 +1,127 @@
+# Render Blueprint — deploys GymHere as a Node web service plus two scheduled
+# cron jobs (retention sweep + daily reminders) that hit the app's cron routes.
+#
+# Usage: push this repo to GitHub → Render → "New +" → "Blueprint" → pick this
+# repo. Render reads this file, creates the services + the shared env-var group,
+# and prompts for every `sync: false` secret. Fill them with your live keys.
+# See SETUP.md §13 and the "Deploy" section in README.md.
+#
+# Notes:
+# - `next start` binds to Render's injected $PORT and 0.0.0.0 automatically.
+# - The `gymhere-shared` group holds the app URL + a generated CRON_SECRET, shared
+#   by the web service and both cron jobs so the /api/cron/* routes authorize
+#   their callers.
+# - The DB (Neon), auth (Clerk) and other services stay external — set their
+#   connection strings/keys on the web service below.
+
+# ------------------------------------------------------- shared env-var group ---
+envVarGroups:
+  - name: gymhere-shared
+    envVars:
+      # Public app URL — EDIT to your Render URL (https://<service>.onrender.com)
+      # or custom domain. Used by the app (webhooks, OG, microsite links) AND as
+      # the target the cron jobs curl. Inlined at build time (NEXT_PUBLIC_*).
+      - key: NEXT_PUBLIC_APP_URL
+        value: https://gymhere.onrender.com
+      # Shared secret that authorizes the cron jobs. Generated once by Render.
+      - key: CRON_SECRET
+        generateValue: true
+
+services:
+  # ---------------------------------------------------------------- web app ---
+  - type: web
+    name: gymhere
+    runtime: node
+    plan: starter # ~512MB; bump to standard if builds OOM
+    region: oregon # change to your nearest region (e.g. singapore, frankfurt)
+    branch: main
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - fromGroup: gymhere-shared
+
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: APP_MODE
+        value: production
+
+      # Database — Neon Postgres connection string.
+      - key: DATABASE_URL
+        sync: false
+
+      # Auth — Clerk.
+      - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_WEBHOOK_SIGNING_SECRET
+        sync: false
+      - key: NEXT_PUBLIC_CLERK_SIGN_IN_URL
+        value: /sign-in
+      - key: NEXT_PUBLIC_CLERK_SIGN_UP_URL
+        value: /sign-up
+
+      # Payments — Razorpay (live mode; supply rzp_live_ keys).
+      - key: RAZORPAY_MODE
+        value: live
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+
+      # File storage — UploadThing.
+      - key: UPLOADTHING_TOKEN
+        sync: false
+
+      # Email — Resend.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+
+      # Rate limiting — Upstash Redis (optional).
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+
+      # Tenant-credential encryption (AES-256-GCM). Required in production.
+      # Generate: openssl rand -hex 32
+      - key: CREDENTIALS_ENCRYPTION_KEY
+        sync: false
+
+  # --------------------------------------------------- cron: retention sweep ---
+  - type: cron
+    name: gymhere-retention
+    runtime: node
+    plan: starter
+    region: oregon
+    branch: main
+    schedule: "0 20 * * *" # daily 20:00 UTC
+    buildCommand: "true" # no build — the job only curls the web service
+    startCommand: >-
+      curl -fsS --max-time 300 -H "Authorization: Bearer $CRON_SECRET"
+      "$NEXT_PUBLIC_APP_URL/api/cron/retention"
+    envVars:
+      - fromGroup: gymhere-shared
+
+  # ---------------------------------------------------- cron: daily reminders ---
+  - type: cron
+    name: gymhere-reminders
+    runtime: node
+    plan: starter
+    region: oregon
+    branch: main
+    schedule: "0 9 * * *" # daily 09:00 UTC
+    buildCommand: "true"
+    startCommand: >-
+      curl -fsS --max-time 300 -H "Authorization: Bearer $CRON_SECRET"
+      "$NEXT_PUBLIC_APP_URL/api/cron/reminders"
+    envVars:
+      - fromGroup: gymhere-shared

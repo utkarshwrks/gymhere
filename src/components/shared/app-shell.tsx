@@ -3,7 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { PanelLeftClose, PanelLeft, type LucideIcon } from "lucide-react";
+import { PanelLeftClose, PanelLeft } from "lucide-react";
+import { resolveIcon, type IconName } from "@/components/shared/icon";
 import { Brand } from "@/components/shared/brand";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,8 @@ import { cn } from "@/lib/utils";
 export interface NavItem {
   href: string;
   label: string;
-  icon: LucideIcon;
+  /** Icon name resolved on the client (see icon.tsx) — Server Components can't pass components. */
+  icon: IconName;
   /** Match nested routes too (default: exact + startsWith for non-root). */
   exact?: boolean;
 }
@@ -38,7 +40,7 @@ function SideLink({
   collapsed: boolean;
 }) {
   const active = useActive(item.href, item.exact);
-  const Icon = item.icon;
+  const Icon = resolveIcon(item.icon);
   const link = (
     <Link
       href={item.href}
@@ -54,7 +56,7 @@ function SideLink({
         {active && (
           <span className="absolute -left-3 h-5 w-0.5 rounded-full bg-primary" />
         )}
-        <Icon className="size-4 shrink-0" />
+        {Icon && <Icon className="size-4 shrink-0" />}
       </span>
       {!collapsed && <span className="truncate">{item.label}</span>}
     </Link>
@@ -161,7 +163,7 @@ export function AppShell({
 
 function MobileTab({ item }: { item: NavItem }) {
   const active = useActive(item.href, item.exact);
-  const Icon = item.icon;
+  const Icon = resolveIcon(item.icon);
   return (
     <Link
       href={item.href}
@@ -170,7 +172,7 @@ function MobileTab({ item }: { item: NavItem }) {
         active ? "text-foreground" : "text-muted-foreground",
       )}
     >
-      <Icon className={cn("size-5", active && "text-primary")} />
+      {Icon && <Icon className={cn("size-5", active && "text-primary")} />}
       <span className="truncate px-1">{item.label}</span>
     </Link>
   );

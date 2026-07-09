@@ -1,20 +1,4 @@
 import { redirect } from "next/navigation";
-import {
-  Boxes,
-  CalendarCheck,
-  CalendarDays,
-  Dumbbell,
-  KanbanSquare,
-  LayoutDashboard,
-  LineChart,
-  Megaphone,
-  Receipt,
-  Star,
-  Tags,
-  UsersRound,
-  Users,
-  Wallet,
-} from "lucide-react";
 import { eq } from "drizzle-orm";
 import { AppShell, type NavItem } from "@/components/shared/app-shell";
 import { UserMenu } from "@/components/shared/user-menu";
@@ -31,21 +15,21 @@ import { daysUntil } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 const nav: NavItem[] = [
-  { href: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/app/members", label: "Members", icon: Users },
-  { href: "/app/billing", label: "Billing", icon: Receipt },
-  { href: "/app/enquiries", label: "Enquiries", icon: KanbanSquare },
-  { href: "/app/attendance", label: "Attendance", icon: CalendarCheck },
-  { href: "/app/classes", label: "Classes", icon: CalendarDays },
-  { href: "/app/plans", label: "Plans", icon: Tags },
-  { href: "/app/store", label: "Store", icon: Boxes },
-  { href: "/app/staff", label: "Staff", icon: UsersRound },
-  { href: "/app/payroll", label: "Payroll", icon: Wallet },
-  { href: "/app/workouts", label: "Workouts", icon: Dumbbell },
-  { href: "/app/messages", label: "Messages", icon: Megaphone },
-  { href: "/app/reviews", label: "Reviews", icon: Star },
-  { href: "/app/reports", label: "Reports", icon: LineChart },
-  { href: "/app/retention", label: "Retention", icon: LineChart },
+  { href: "/app", label: "Dashboard", icon: "LayoutDashboard", exact: true },
+  { href: "/app/members", label: "Members", icon: "Users" },
+  { href: "/app/billing", label: "Billing", icon: "Receipt" },
+  { href: "/app/enquiries", label: "Enquiries", icon: "KanbanSquare" },
+  { href: "/app/attendance", label: "Attendance", icon: "CalendarCheck" },
+  { href: "/app/classes", label: "Classes", icon: "CalendarDays" },
+  { href: "/app/plans", label: "Plans", icon: "Tags" },
+  { href: "/app/store", label: "Store", icon: "Boxes" },
+  { href: "/app/staff", label: "Staff", icon: "UsersRound" },
+  { href: "/app/payroll", label: "Payroll", icon: "Wallet" },
+  { href: "/app/workouts", label: "Workouts", icon: "Dumbbell" },
+  { href: "/app/messages", label: "Messages", icon: "Megaphone" },
+  { href: "/app/reviews", label: "Reviews", icon: "Star" },
+  { href: "/app/reports", label: "Reports", icon: "LineChart" },
+  { href: "/app/retention", label: "Retention", icon: "LineChart" },
 ];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {

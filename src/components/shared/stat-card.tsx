@@ -3,8 +3,18 @@
 import * as React from "react";
 import { animate, motion, useInView } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
+import { resolveIcon, type IconName } from "@/components/shared/icon";
+import { formatMoneyCompact } from "@/lib/format";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+
+/** Named formatters so Server Components can pass a string instead of a function. */
+const FORMATTERS = {
+  money: formatMoneyCompact,
+  number: (n: number) => Math.round(n).toLocaleString("en-IN"),
+} satisfies Record<string, (n: number) => string>;
+
+export type FormatKey = keyof typeof FORMATTERS;
 
 function CountUp({
   value,
@@ -41,8 +51,10 @@ function CountUp({
 export interface StatCardProps {
   label: string;
   value: number;
-  format?: (n: number) => string;
-  icon?: LucideIcon;
+  /** String key (from a Server Component) or a formatter function (client callers). */
+  format?: FormatKey | ((n: number) => string);
+  /** Icon name (from a Server Component) or a component (client callers). */
+  icon?: IconName | LucideIcon;
   delta?: { value: string; positive?: boolean };
   live?: boolean;
   index?: number;
@@ -53,12 +65,14 @@ export function StatCard({
   label,
   value,
   format,
-  icon: Icon,
+  icon,
   delta,
   live,
   index = 0,
   className,
 }: StatCardProps) {
+  const Icon = resolveIcon(icon);
+  const formatFn = typeof format === "string" ? FORMATTERS[format] : format;
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -82,7 +96,7 @@ export function StatCard({
         </div>
         <div className="flex items-end justify-between gap-2 px-4">
           <div className="font-display text-2xl font-semibold tracking-tight">
-            <CountUp value={value} format={format} />
+            <CountUp value={value} format={formatFn} />
           </div>
           {delta && (
             <span

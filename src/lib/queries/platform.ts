@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { subDays } from "date-fns";
 import { db } from "@/lib/db";
 import {
@@ -7,7 +7,32 @@ import {
   invoices,
   members,
   platformPlans,
+  users,
 } from "@/lib/db/schema";
+
+export interface SuperAdminRow {
+  id: string;
+  email: string;
+  name: string | null;
+  /** True until the invited email actually signs in (placeholder clerk id). */
+  pending: boolean;
+  createdAt: string;
+}
+
+export async function superAdminList(): Promise<SuperAdminRow[]> {
+  const rows = await db
+    .select({ id: users.id, email: users.email, name: users.name, clerkId: users.clerkId, createdAt: users.createdAt })
+    .from(users)
+    .where(eq(users.role, "super_admin"))
+    .orderBy(asc(users.createdAt));
+  return rows.map((r) => ({
+    id: r.id,
+    email: r.email,
+    name: r.name,
+    pending: /^(seed_|invite_)/.test(r.clerkId),
+    createdAt: r.createdAt.toISOString(),
+  }));
+}
 
 export interface PlatformStats {
   totalGyms: number;

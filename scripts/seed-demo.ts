@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "./load-env";
 import { addMonths, format, subDays, subMonths } from "date-fns";
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -87,9 +87,15 @@ async function main() {
     if (!has) await db.insert(integrationPolicies).values({ gymId: null, service, mode: "platform", allowPlatformFallback: true });
   }
 
-  // Super admin.
+  // Super admin. Idempotently ensure this email is a super admin — if a prior
+  // run left it as a gym_owner (e.g. via onboarding), restore the role here.
   const adminEmail = process.env.DEMO_ADMIN_EMAIL ?? "admin@gymhere.app";
-  if (!(await db.query.users.findFirst({ where: eq(users.email, adminEmail) }))) {
+  const existingAdmin = await db.query.users.findFirst({ where: eq(users.email, adminEmail) });
+  if (existingAdmin) {
+    if (existingAdmin.role !== "super_admin" || existingAdmin.gymId) {
+      await db.update(users).set({ role: "super_admin", gymId: null, updatedAt: new Date() }).where(eq(users.id, existingAdmin.id));
+    }
+  } else {
     await db.insert(users).values({ clerkId: "seed_super_admin", email: adminEmail, name: "Platform Admin", role: "super_admin" });
   }
   console.log(`  ✓ super admin (${adminEmail})`);

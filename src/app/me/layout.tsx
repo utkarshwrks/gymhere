@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { CalendarDays, CreditCard, Dumbbell, Home, QrCode, User } from "lucide-react";
 import { AppShell, type NavItem } from "@/components/shared/app-shell";
 import { UserMenu } from "@/components/shared/user-menu";
 import { getMemberContext, getSessionUser } from "@/lib/auth";
@@ -8,12 +7,12 @@ import { isConfigured } from "@/lib/env";
 export const dynamic = "force-dynamic";
 
 const nav: NavItem[] = [
-  { href: "/me", label: "Home", icon: Home, exact: true },
-  { href: "/me/qr", label: "My QR", icon: QrCode },
-  { href: "/me/classes", label: "Classes", icon: CalendarDays },
-  { href: "/me/workouts", label: "Workouts", icon: Dumbbell },
-  { href: "/me/payments", label: "Payments", icon: CreditCard },
-  { href: "/me/profile", label: "Profile", icon: User },
+  { href: "/me", label: "Home", icon: "Home", exact: true },
+  { href: "/me/qr", label: "My QR", icon: "QrCode" },
+  { href: "/me/classes", label: "Classes", icon: "CalendarDays" },
+  { href: "/me/workouts", label: "Workouts", icon: "Dumbbell" },
+  { href: "/me/payments", label: "Payments", icon: "CreditCard" },
+  { href: "/me/profile", label: "Profile", icon: "User" },
 ];
 
 export default async function MemberLayout({ children }: { children: React.ReactNode }) {

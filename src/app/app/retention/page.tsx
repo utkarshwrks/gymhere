@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { LineChart, UserX } from "lucide-react";
+import { LineChart } from "lucide-react";
 import { requireGym } from "@/lib/auth";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
@@ -33,10 +33,10 @@ export default async function RetentionPage() {
       <PageHeader title="Retention" description="Catch members drifting away before they lapse." />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard index={0} label="Tracked members" value={rows.length} icon={LineChart} />
-        <StatCard index={1} label="Irregular (7d)" value={irregular.length} icon={UserX} />
-        <StatCard index={2} label="Absent (14d+)" value={absent.length} icon={UserX} />
-        <StatCard index={3} label="Regular" value={rows.length - irregular.length} icon={LineChart} />
+        <StatCard index={0} label="Tracked members" value={rows.length} icon="LineChart" />
+        <StatCard index={1} label="Irregular (7d)" value={irregular.length} icon="UserX" />
+        <StatCard index={2} label="Absent (14d+)" value={absent.length} icon="UserX" />
+        <StatCard index={3} label="Regular" value={rows.length - irregular.length} icon="LineChart" />
       </div>
 
       <Card>

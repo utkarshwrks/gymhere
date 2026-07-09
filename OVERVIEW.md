@@ -13,7 +13,7 @@ many independent gyms ("tenants"), each with its own members, money, staff and p
 page — fully isolated from every other gym.
 
 It makes money three ways:
-1. **SaaS subscriptions** — gyms pay GymHere (Starter / Growth / Pro, 14-day trial).
+1. **SaaS subscriptions** — gyms are provisioned by a super admin on a plan (Starter / Growth / Pro).
 2. **Gym revenue tools** — each gym sells its own membership plans, collects payments,
    runs a supplement store, and gets a public website.
 3. **API product** — GymHere sells metered REST API access so other apps can integrate
@@ -37,14 +37,17 @@ It makes money three ways:
 
 Each journey below is described as **what** happens, **why** it exists, and **how** it works.
 
-### 1. A gym signs up and starts a trial
-- **What:** A visitor signs up, completes a 3-step onboarding wizard (gym details + logo
-  → business settings → pick a tier), and lands on an empty dashboard with a 14-day trial.
-- **Why:** Zero-friction, no-card trials are how B2B SaaS converts; the gym should be
-  usable in minutes.
-- **How:** Clerk handles auth; a server action creates the `gyms`, `gym_settings` and a
-  `gym_subscriptions` row with `status='trialing'`, `trial_ends_at = now()+14d`. When the
-  trial ends, the app walls the gym to a plan-picker until they subscribe.
+### 1. A super admin provisions a gym
+- **What:** A super admin creates a gym + its owner from `/sa` → Gyms → Create gym
+  (gym name, owner email, plan). The gym goes live immediately on that plan. The owner
+  signs in with that email and lands straight in their dashboard to configure it.
+- **Why:** GymHere onboards gyms hands-on (sales-led), so provisioning is controlled by
+  the platform team — there is no public self-serve signup.
+- **How:** Clerk handles auth; a super-admin server action (`createGymWithOwner`) creates
+  the `gyms`, `gym_settings`, a `gym_subscriptions` row with `status='active'`, and a
+  placeholder owner in `users` (claimed on first sign-in). A signed-in user with no gym
+  sees a *"not linked to a gym yet"* notice; super admins can suspend, impersonate or
+  delete any gym, and manage the set of super admins.
 
 ### 2. Running the gym day to day
 - **What:** Members (add wizard, CSV import, profiles, renew/freeze/cancel), membership

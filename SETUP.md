@@ -4,6 +4,11 @@ A step-by-step guide to run the whole app on your machine and reach the **Gym Ad
 panel**, the **Super Admin panel**, the **Member portal**, the **public REST API**,
 and the **integration credential controls**.
 
+> **Provisioning model:** gyms are created by a **super admin only** — there is no
+> public self-serve signup. A super admin creates a gym + its owner from the `/sa`
+> panel; the owner then signs in with that email and lands straight in their gym
+> dashboard. See steps 8–8b.
+
 ---
 
 ## 0. Prerequisites
@@ -76,6 +81,9 @@ DEMO_ADMIN_EMAIL=youremail+admin@gmail.com     # -> Super Admin (/sa)
 DEMO_OWNER_EMAIL=youremail+owner@gmail.com      # -> Gym Owner of the seeded demo gym (/app)
 ```
 
+> `seed:demo` is **idempotent** for `DEMO_ADMIN_EMAIL`: re-running it re-asserts the
+> super-admin role on that email (handy if it ever got changed).
+
 Optional but recommended (Phase 6 credential encryption). Generate a 32-byte key:
 
 ```bash
@@ -116,22 +124,42 @@ Open **http://localhost:3000**.
 ## 8. Reach each panel (sign up with the matching email)
 
 Go to **/sign-up** and register with the email for the role you want. The first
-sign-in "claims" the seeded account automatically.
+sign-in "claims" the matching seeded/invited account automatically.
 
 | Panel | URL | Sign up with |
 | --- | --- | --- |
 | **Super Admin** | `/sa` | `DEMO_ADMIN_EMAIL` (e.g. `you+admin@gmail.com`) |
 | **Gym Admin** (seeded demo gym, full data) | `/app` | `DEMO_OWNER_EMAIL` (e.g. `you+owner@gmail.com`) |
-| **Gym Admin** (fresh, runs the onboarding wizard) | `/app` | any **new** email |
+| **Gym Admin** (a gym you create in step 8b) | `/app` | the owner email you entered in `/sa` |
 | **Member portal** | `/me` | see below |
+
+> **No public self-serve signup.** A brand-new email that isn't linked to a gym lands
+> on a *"your account isn't linked to a gym yet — ask your platform admin"* screen, not
+> an onboarding wizard. Create the gym from `/sa` first (step 8b).
 
 **To get into the Member portal:** open the gym as its owner → **Members** → open any
 member → **Invite to portal** → then sign up with that member's email.
 
+## 8b. Create a new gym as super admin (the primary flow)
+
+1. Sign in as **Super Admin** (`/sa`) with `DEMO_ADMIN_EMAIL`.
+2. Go to **Gyms** → **Create gym** → enter the gym name, the **owner's email** (use a
+   Gmail `+alias` you can receive mail at), owner name, city/phone, and a **platform
+   plan**. The gym goes **live immediately on that plan — no trial, no payment.**
+3. In a separate/incognito window, **sign up with that owner email** → you land straight
+   in `/app` for the new gym. Configure it: create membership plans, add members, etc.
+4. Back in `/sa` → **Gyms**, the row menu lets you **suspend / reactivate**, **impersonate**,
+   or **delete** the gym (delete cascades all its data + the owner account).
+
+**Add more super admins:** `/sa` → **Admins** → add by email. An existing user is
+promoted instantly; a new email is claimed as super admin on their first sign-in. You
+can demote others (not yourself, and not the last remaining super admin).
+
 **What to check:**
-- **Super Admin (`/sa`)**: platform dashboard + trial funnel → **Gyms** (suspend /
-  reactivate / **impersonate**) → **SaaS tiers** (edit price/caps/feature flags) →
-  **Integrations** (step 10) → **Announcements**.
+- **Super Admin (`/sa`)**: platform dashboard + trial funnel → **Gyms** (**create** /
+  suspend / reactivate / **impersonate** / **delete**) → **SaaS tiers** (edit
+  price/caps/feature flags) → **Integrations** (step 10) → **Announcements** →
+  **Admins** (add/remove super admins).
 - **Gym Admin (`/app`)**: Dashboard (live stats/charts) → Members (add/CSV/profile) →
   Plans → Enquiries (drag the kanban) → Attendance (check-in) → Billing → Store →
   Classes → Staff → Payroll → Workouts → Messages → Reports → Reviews → Settings.
@@ -210,6 +238,11 @@ npm run test:isolation   # verify cross-gym data isolation (needs 2 seeded gyms)
   `DATABASE_URL`. Add the DB, `db:push`, `seed:demo`, then sign up.
 - **Signed up but landed in the wrong panel** → the email→role mapping is by exact
   email; use the `+alias` emails from step 5 and re-seed if you changed them.
+- **New email shows "your account isn't linked to a gym yet"** → expected. Gyms are
+  created by a super admin only (step 8b) — create the gym for that owner email in
+  `/sa` → Gyms → Create gym, then sign in again.
+- **Super admin email got demoted to a gym owner** → re-run `npm run seed:demo`; it
+  re-asserts super admin for `DEMO_ADMIN_EMAIL`.
 - **Can't verify `admin@gymhere.app`** → don't use it; set `DEMO_ADMIN_EMAIL` to an
   email you actually own and sign up with that.
 - **API returns 401** → missing/typo'd `Authorization: Bearer ghk_...`, or the key was
@@ -221,6 +254,15 @@ npm run test:isolation   # verify cross-gym data isolation (needs 2 seeded gyms)
 
 ## 13. Production notes (later)
 
-Deploy on **Vercel**, set the same env vars with **live** keys, `APP_MODE=production`,
-`RAZORPAY_MODE=live`, a **required** `CREDENTIALS_ENCRYPTION_KEY`, a Neon prod branch,
-and register the Razorpay + Clerk webhooks. See the "Deploy" section in `README.md`.
+Deploy on **Render** (a `render.yaml` Blueprint ships in the repo) or **Vercel**. Set
+the same env vars with **live** keys, `APP_MODE=production`, `RAZORPAY_MODE=live`, a
+**required** `CREDENTIALS_ENCRYPTION_KEY`, a Neon prod branch, and register the
+Razorpay + Clerk webhooks.
+
+- **Render:** New + → Blueprint → pick this repo. It creates the web service and the
+  two cron jobs (`/api/cron/retention` at 20:00 UTC, `/api/cron/reminders` at 09:00
+  UTC), which authorize via the auto-generated `CRON_SECRET`. Set `NEXT_PUBLIC_APP_URL`
+  to your Render URL.
+- **Vercel:** import the repo; crons run from `vercel.json`.
+
+See the "Deploy" section in `README.md`.

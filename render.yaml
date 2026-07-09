@@ -47,7 +47,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: APP_MODE
-        value: production
+        value: demo # using test keys; switch to "production" with live keys
 
       # Database — Neon Postgres connection string.
       - key: DATABASE_URL
@@ -65,9 +65,9 @@ services:
       - key: NEXT_PUBLIC_CLERK_SIGN_UP_URL
         value: /sign-up
 
-      # Payments — Razorpay (live mode; supply rzp_live_ keys).
+      # Payments — Razorpay (test mode; switch to "live" with rzp_live_ keys).
       - key: RAZORPAY_MODE
-        value: live
+        value: test
       - key: RAZORPAY_KEY_ID
         sync: false
       - key: RAZORPAY_KEY_SECRET
